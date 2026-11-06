@@ -1,17 +1,31 @@
 @import "tailwindcss";
 
+/* Monocraft : police libre (licence OFL) inspirée de celle du jeu */
+@font-face {
+  font-family: "Monocraft";
+  src: url("/fonts/Monocraft.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Monocraft";
+  src: url("/fonts/Monocraft-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
 @theme {
-  --color-background: #07090d;
-  --color-foreground: #e9eef3;
-  --color-card: #0c1118;
-  --color-muted: #131a23;
-  --color-muted-foreground: #8b97a7;
-  --color-border: #1e2731;
-  --color-primary: #5ee17a;
-  --color-primary-foreground: #03130a;
+  --color-background: #1d1520;
+  --color-foreground: #f3eee8;
+  --color-card: rgb(22 16 26 / 0.78);
+  --color-muted: rgb(255 255 255 / 0.07);
+  --color-muted-foreground: #b3a7b8;
+  --color-border: rgb(255 255 255 / 0.1);
+  --color-primary: #6ee26a;
+  --color-primary-foreground: #0b2208;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-pixel: "Pixelify Sans", "Inter", ui-sans-serif, sans-serif;
+  --font-pixel: "Monocraft", "Inter", ui-monospace, monospace;
 
   --animate-shine: shine 4s linear infinite;
   @keyframes shine {
@@ -31,27 +45,64 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 ::selection {
-  background: rgb(94 225 122 / 0.3);
+  background: rgb(110 226 106 / 0.35);
 }
 
-/* Petite grille "pixel" en fond */
+/* Les cartes laissent deviner le fond, comme du verre teinté */
+.bg-card {
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* Petite grille "pixel" */
 .fond-grille {
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+    linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
 .texte-brillant {
-  background: linear-gradient(110deg, #5ee17a 20%, #d9ffe1 40%, #5ee17a 60%);
+  background: linear-gradient(110deg, #6ee26a 20%, #e6ffd9 40%, #6ee26a 60%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   animation: var(--animate-shine);
+}
+
+/* L'ombre portée du texte dans le jeu */
+.ombre-mc {
+  text-shadow: 0.1em 0.1em 0 rgb(0 0 0 / 0.45);
+}
+
+/* Le texte jaune qui pulse à côté du titre */
+.splash {
+  color: #ffff55;
+  text-shadow: 0.12em 0.12em 0 #3f3f15;
+  animation: splash 0.6s ease-in-out infinite alternate;
+}
+@keyframes splash {
+  from { transform: rotate(-16deg) scale(1); }
+  to { transform: rotate(-16deg) scale(1.1); }
+}
+
+/* Nuages qui traversent le ciel */
+.nuage {
+  animation: nuage linear infinite;
+}
+@keyframes nuage {
+  from { transform: translateX(-30vw); }
+  to { transform: translateX(110vw); }
+}
+
+/* Curseur en forme de pioche */
+.curseur-pioche {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%235e3f27' d='M9 6h2v2H9zM7 8h2v2H7zM5 10h2v2H5zM3 12h2v2H3zM1 14h2v2H1z'/%3E%3Cpath fill='%236ff3fb' d='M4 1h7v2H4zM11 2h2v2h-2zM13 4h2v6h-2zM10 4h3v2h-3z'/%3E%3Cpath fill='%232bb5c0' d='M4 2h2v1H4zM13 8h2v2h-2z'/%3E%3C/svg%3E") 6 2, pointer;
 }
 
 img.pixel {

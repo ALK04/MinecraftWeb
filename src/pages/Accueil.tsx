@@ -1,4 +1,7 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Ciel, Collines } from '@/components/Ciel'
+import { useJeu } from '@/lib/jeu'
+import { sons } from '@/lib/sons'
 import { Link } from 'react-router'
 import { motion, AnimatePresence } from 'motion/react'
 import { ArrowRight, Check, Copy, Map, Moon, Target, Trophy, Users } from 'lucide-react'
@@ -30,7 +33,7 @@ export default function Accueil() {
             <ApercuCarte />
             <div className="relative mt-auto">
               <Icone><Map size={20} /></Icone>
-              <h3 className="mt-4 text-2xl font-bold">La carte du monde</h3>
+              <h3 className="mt-4 font-pixel text-2xl font-bold">La carte du monde</h3>
               <p className="mt-1 max-w-md text-muted-foreground">
                 Explore le monde en 3D depuis ton navigateur, et vois où sont les autres en direct.
               </p>
@@ -40,7 +43,7 @@ export default function Accueil() {
 
           <CarteBento to="/classements" delai={0.08}>
             <Icone><Trophy size={20} /></Icone>
-            <h3 className="mt-4 text-lg font-bold">Classements</h3>
+            <h3 className="mt-4 font-pixel text-lg font-bold">Classements</h3>
             <ol className="mt-4 space-y-2.5">
               {top.length === 0 && <li className="text-sm text-muted-foreground">Personne n'a encore joué.</li>}
               {top.map((j, i) => (
@@ -59,7 +62,7 @@ export default function Accueil() {
 
           <CarteBento to="/objectifs" delai={0.16}>
             <Icone><Target size={20} /></Icone>
-            <h3 className="mt-4 text-lg font-bold">Objectifs</h3>
+            <h3 className="mt-4 font-pixel text-lg font-bold">Objectifs</h3>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
               {[
                 ['En cours', compte('en_cours'), 'text-sky-300'],
@@ -79,7 +82,7 @@ export default function Accueil() {
             <div className="flex flex-wrap items-center gap-6">
               <div>
                 <Icone><Users size={20} /></Icone>
-                <h3 className="mt-4 text-lg font-bold">
+                <h3 className="mt-4 font-pixel text-lg font-bold">
                   {joueurs?.length ?? 0} joueur{(joueurs?.length ?? 0) > 1 ? 's' : ''} déjà passé{(joueurs?.length ?? 0) > 1 ? 's' : ''} par ici
                 </h3>
               </div>
@@ -107,40 +110,108 @@ export default function Accueil() {
 
 // ------------------------------------------------------------------
 
-function Hero({ statut }: { statut: Statut | null }) {
-  const mots = site.nom.split(' ')
-  return (
-    <section className="relative isolate flex min-h-[92dvh] items-center justify-center overflow-hidden px-4 pt-10 pb-24 sm:pt-28">
-      <div className="fond-grille absolute inset-0 -z-20 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
-      <div className="absolute top-1/3 left-1/2 -z-20 size-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-[120px]" />
-      <FondBlocs className="absolute inset-0 -z-10 h-full w-full" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-background to-transparent" />
+const SPLASHS = [
+  'Aussi sur grille-pain !',
+  '100 % fait main !',
+  'Ne creuse pas sous tes pieds !',
+  'Sans creeper (presque) !',
+  'Les cochons ne volent pas !',
+  'Patate cuite !',
+  'Ça sent la lave !',
+  'Le lit est une option !',
+  'Plus de diamants que prévu !',
+  'Pas de griefing, merci !',
+  'Construit par des potes !',
+  'Pioche pas fournie !',
+  'Clique-moi encore !',
+  'Où est mon chien ?',
+  'Ça reste entre nous !',
+]
 
-      <div className="max-w-3xl text-center">
+function Hero({ statut }: { statut: Statut | null }) {
+  const { eclats, debloquer } = useJeu()
+  const [nuit, setNuit] = useState(false)
+  const [splash, setSplash] = useState(() => Math.floor(Math.random() * SPLASHS.length))
+  const lus = useRef(new Set<number>())
+
+  const nouveauSplash = () => {
+    sons.pling()
+    setSplash((s) => {
+      let n = s
+      while (n === s) n = Math.floor(Math.random() * SPLASHS.length)
+      return n
+    })
+  }
+  useEffect(() => {
+    lus.current.add(splash)
+    if (lus.current.size >= 10) debloquer('splash')
+  }, [splash, debloquer])
+
+  return (
+    <section className="relative isolate flex min-h-[94dvh] items-center justify-center overflow-hidden px-4 pt-10 pb-40 sm:pt-28">
+      <Ciel
+        nuit={nuit}
+        basculer={() => {
+          setNuit((n) => !n)
+          sons.pling()
+          debloquer('nuit')
+        }}
+      />
+      <FondBlocs
+        className="curseur-pioche absolute inset-0 -z-10 h-full w-full"
+        onCasser={(x, y, couleurs) => {
+          eclats(x, y, couleurs, 22, 6)
+          sons.casse()
+          debloquer('bloc')
+        }}
+      />
+      <Collines />
+
+      <div className="pointer-events-none relative z-10 max-w-3xl text-center [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_h1]:pointer-events-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <PastilleStatut statut={statut} />
         </motion.div>
 
-        <h1 className="mt-7 text-5xl font-extrabold tracking-tight text-balance sm:text-7xl">
-          {mots.map((mot, i) => (
-            <motion.span
-              key={i}
-              className={cn('inline-block', i === mots.length - 1 && 'texte-brillant')}
-              initial={{ opacity: 0, y: 24, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              transition={{ duration: 0.7, delay: 0.15 + i * 0.09, ease: douceur }}
-            >
-              {mot}
-              {i < mots.length - 1 && ' '}
-            </motion.span>
-          ))}
-        </h1>
+        <div className="relative mt-8 inline-block">
+          <h1 className="ombre-mc font-pixel text-5xl font-bold tracking-tight sm:text-8xl">
+            {site.nom.split('').map((lettre, i) => (
+              <motion.span
+                key={i}
+                className="inline-block"
+                initial={{ opacity: 0, y: -80, rotate: (i % 2 ? 1 : -1) * 25 }}
+                animate={{ opacity: 1, y: 0, rotate: 0 }}
+                whileHover={{ y: -12, rotate: (i % 2 ? 1 : -1) * 10, color: '#6ee26a' }}
+                transition={{ type: 'spring', stiffness: 260, damping: 12, delay: 0.1 + i * 0.06 }}
+              >
+                {lettre}
+              </motion.span>
+            ))}
+          </h1>
+          <button
+            onClick={nouveauSplash}
+            className="absolute -right-6 -bottom-4 origin-center font-pixel text-sm whitespace-nowrap sm:-right-20 sm:bottom-0 sm:text-lg"
+            title="Clique pour un autre message"
+          >
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={splash}
+                className="splash block"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              >
+                {SPLASHS[splash]}
+              </motion.span>
+            </AnimatePresence>
+          </button>
+        </div>
 
         <motion.p
-          className="mx-auto mt-6 max-w-xl text-lg text-pretty text-muted-foreground"
+          className="ombre-mc mx-auto mt-8 max-w-xl text-lg text-pretty text-white/90"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.5, ease: douceur }}
+          transition={{ duration: 0.7, delay: 0.7, ease: douceur }}
         >
           {site.slogan}
         </motion.p>
@@ -149,12 +220,12 @@ function Hero({ statut }: { statut: Statut | null }) {
           className="mt-10 flex flex-wrap items-center justify-center gap-3"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.65, ease: douceur }}
+          transition={{ duration: 0.7, delay: 0.85, ease: douceur }}
         >
           <CopierAdresse />
           <Link
             to="/carte-du-monde"
-            className="group inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-6 py-3.5 text-sm font-semibold backdrop-blur transition hover:border-primary/40"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/25 px-6 py-3.5 text-sm font-semibold backdrop-blur transition hover:border-primary/60"
           >
             Voir la carte
             <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
@@ -163,15 +234,16 @@ function Hero({ statut }: { statut: Statut | null }) {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-          className="mt-4 text-xs text-muted-foreground"
+          transition={{ delay: 1.1 }}
+          className="mt-4 font-pixel text-xs text-white/70"
         >
-          {site.version}
+          {site.version} · casse les blocs qui flottent, ils ne demandent que ça
         </motion.p>
       </div>
     </section>
   )
 }
+
 
 function PastilleStatut({ statut }: { statut: Statut | null }) {
   const enLigne = statut?.etat === 'en_ligne'
@@ -216,37 +288,44 @@ function PastilleStatut({ statut }: { statut: Statut | null }) {
 }
 
 function CopierAdresse() {
+  const { orbes, debloquer } = useJeu()
   const [copie, setCopie] = useState(false)
-  const copier = async () => {
+  const copier = async (e: MouseEvent) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    orbes(r.left + r.width / 2, r.top, 10)
+    debloquer('adresse')
+    setCopie(true)
+    setTimeout(() => setCopie(false), 1800)
     try {
       await navigator.clipboard.writeText(site.adresse)
-      setCopie(true)
-      setTimeout(() => setCopie(false), 1800)
     } catch {
       /* pas de presse-papiers (http) : l'adresse reste lisible */
     }
   }
   return (
-    <button
+    <motion.button
       onClick={copier}
-      className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-[0_0_40px_-8px] shadow-primary/70 transition hover:brightness-110 active:scale-[0.97]"
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.95 }}
+      className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-[0_0_40px_-6px] shadow-primary/80 hover:brightness-110"
     >
-      <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-      <span className="font-mono">{site.adresse}</span>
+      <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+      <span className="font-pixel">{copie ? 'Copié !' : site.adresse}</span>
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={copie ? 'ok' : 'copier'}
-          initial={{ scale: 0.4, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
+          initial={{ scale: 0.4, opacity: 0, rotate: -90 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
           exit={{ scale: 0.4, opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
           {copie ? <Check size={16} strokeWidth={3} /> : <Copy size={16} />}
         </motion.span>
       </AnimatePresence>
-    </button>
+    </motion.button>
   )
 }
+
 
 // Carte du bento : apparition au défilement + halo qui suit la souris
 function CarteBento({

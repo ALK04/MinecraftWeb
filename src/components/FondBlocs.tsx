@@ -11,6 +11,8 @@ type Bloc = {
   vitesse: number
   phase: number
   couleurs: [string, string, string] // dessus, gauche, droite
+  px: number // position à l'écran au dernier dessin
+  py: number
 }
 
 const TYPES: [string, string, string][] = [
@@ -36,6 +38,8 @@ function creerBlocs(l: number, h: number): Bloc[] {
       vitesse: 0.08 + profondeur * 0.25,
       phase: Math.random() * Math.PI * 2,
       couleurs: TYPES[Math.floor(Math.random() * TYPES.length)],
+      px: 0,
+      py: 0,
     }
   }).sort((a, b) => a.profondeur - b.profondeur)
 }
@@ -55,8 +59,14 @@ function dessinerCube(ctx: CanvasRenderingContext2D, x: number, y: number, s: nu
   face([x, y, x + w, y - s / 2, x + w, y + s / 2, x, y + s], c[2])
 }
 
-export function FondBlocs({ className }: { className?: string }) {
+type Casser = (x: number, y: number, couleurs: string[]) => void
+
+export function FondBlocs({ className, onCasser }: { className?: string; onCasser?: Casser }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const casserRef = useRef(onCasser)
+  useEffect(() => {
+    casserRef.current = onCasser
+  })
 
   useEffect(() => {
     const canvas = ref.current
@@ -97,7 +107,9 @@ export function FondBlocs({ className }: { className?: string }) {
         const flotte = Math.sin(t / 1400 + b.phase) * 6 * b.profondeur
         const px = b.x + souris.cx * 30 * b.profondeur
         const py = b.y + flotte + souris.cy * 20 * b.profondeur
-        ctx.globalAlpha = 0.18 + b.profondeur * 0.6
+        b.px = px
+        b.py = py
+        ctx.globalAlpha = 0.3 + b.profondeur * 0.65
         dessinerCube(ctx, px, py, b.taille, b.couleurs)
       }
       ctx.globalAlpha = 1
@@ -113,9 +125,27 @@ export function FondBlocs({ className }: { className?: string }) {
       souris.y = e.clientY / window.innerHeight - 0.5
     }
 
+    // Clic : on cherche le bloc touché (le plus proche de nous d'abord) et on le casse
+    const cliquer = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect()
+      const x = e.clientX - r.left
+      const y = e.clientY - r.top
+      for (let i = blocs.length - 1; i >= 0; i--) {
+        const b = blocs[i]
+        if (Math.abs(x - b.px) < b.taille * 0.9 && Math.abs(y - b.py) < b.taille) {
+          casserRef.current?.(e.clientX, e.clientY, b.couleurs)
+          b.y = h + 60 + Math.random() * 200
+          b.x = Math.random() * l
+          if (reduit) dessiner(0)
+          return
+        }
+      }
+    }
+
     const ro = new ResizeObserver(redimensionner)
     ro.observe(canvas)
     redimensionner()
+    canvas.addEventListener('pointerdown', cliquer)
     if (!reduit) {
       raf = requestAnimationFrame(boucle)
       window.addEventListener('pointermove', bouger)
@@ -123,6 +153,7 @@ export function FondBlocs({ className }: { className?: string }) {
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      canvas.removeEventListener('pointerdown', cliquer)
       window.removeEventListener('pointermove', bouger)
     }
   }, [])

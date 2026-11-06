@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react'
 import {
   Check, Compass, Gem, Hammer, Hand, KeyRound, Pencil, Plus, RotateCcw, Sparkles, Sword, Trash2, Undo2, User, Wheat,
@@ -7,6 +7,8 @@ import {
 import { Bouton, Chargement, EnTete, Modale, Tete, champ } from '@/components/communs'
 import { api, ErreurApi, useApi, type EtatObjectif, type Joueur, type Objectif, type ReponseObjectifs } from '@/lib/api'
 import { cn, ecrireStockage, ilYa, lireStockage } from '@/lib/utils'
+import { useJeu } from '@/lib/jeu'
+import { sons } from '@/lib/sons'
 
 const CATEGORIES: Record<string, { nom: string; icone: LucideIcon; classe: string }> = {
   construction: { nom: 'Construction', icone: Hammer, classe: 'text-amber-300 bg-amber-300/10 border-amber-300/20' },
@@ -29,6 +31,7 @@ type Action = 'prendre' | 'lacher' | 'terminer' | 'rouvrir'
 export default function Objectifs() {
   const { data, erreur, recharger } = useApi<ReponseObjectifs>('/api/objectifs', 20_000)
   const { data: joueurs } = useApi<Joueur[]>('/api/joueurs')
+  const { eclats, orbes, debloquer } = useJeu()
 
   // Pseudo et code, gardés dans le navigateur
   const [pseudo, setPseudoEtat] = useState(() => lireStockage('pseudo'))
@@ -77,8 +80,17 @@ export default function Objectifs() {
     }
   }
 
-  const agir = (o: Objectif, action: Action) =>
-    avecPseudo((p) => void ecrire(`/api/objectifs/${o.id}`, 'PATCH', { pseudo: p, action }))
+  const agir = (o: Objectif, action: Action, x = innerWidth / 2, y = innerHeight / 2) =>
+    avecPseudo(async (p) => {
+      const ok = await ecrire(`/api/objectifs/${o.id}`, 'PATCH', { pseudo: p, action })
+      if (ok && action === 'terminer') {
+        eclats(x, y, ['#6ee26a', '#ffff55', '#5ce6e0', '#ff6b9d', '#ffffff'], 60, 11)
+        orbes(x, y, 8)
+        debloquer('objectif')
+      } else if (ok) {
+        sons.bois()
+      }
+    })
 
   const supprimer = (o: Objectif) => void ecrire(`/api/objectifs/${o.id}`, 'DELETE')
 
@@ -160,7 +172,7 @@ export default function Objectifs() {
                           o={o}
                           pseudo={pseudo}
                           joueurs={joueurs}
-                          agir={(a) => agir(o, a)}
+                          agir={(a, x, y) => agir(o, a, x, y)}
                           supprimer={() => supprimer(o)}
                         />
                       ))}
@@ -254,7 +266,7 @@ function CarteObjectif({
   o: Objectif
   pseudo: string
   joueurs: Joueur[] | null
-  agir: (a: Action) => void
+  agir: (a: Action, x?: number, y?: number) => void
   supprimer: () => void
 }) {
   const cat = CATEGORIES[o.categorie] ?? CATEGORIES.autre
@@ -320,7 +332,7 @@ function CarteObjectif({
           </PetitBouton>
         )}
         {o.statut !== 'fait' && (
-          <PetitBouton onClick={() => agir('terminer')} icone={Check} className="text-primary hover:bg-primary/10">
+          <PetitBouton onClick={(e) => agir('terminer', e.clientX, e.clientY)} icone={Check} className="text-primary hover:bg-primary/10">
             Terminé
           </PetitBouton>
         )}
@@ -378,7 +390,7 @@ function PetitBouton({
   icone: LucideIcon
   className?: string
   children: string
-  onClick: () => void
+  onClick: (e: MouseEvent<HTMLButtonElement>) => void
 }) {
   return (
     <button

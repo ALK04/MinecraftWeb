@@ -42,7 +42,7 @@ export function EnTete({ surtitre, titre, children }: { surtitre: string; titre:
     >
       <div>
         <p className="mb-2 font-pixel text-sm tracking-widest text-primary uppercase">{surtitre}</p>
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{titre}</h1>
+        <h1 className="ombre-mc font-pixel text-4xl font-bold tracking-tight sm:text-6xl">{titre}</h1>
       </div>
       {children}
     </motion.header>

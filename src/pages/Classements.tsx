@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react'
-import { ArrowBigUp, Clock, Crosshair, Footprints, Pickaxe, Skull, Sword, type LucideIcon } from 'lucide-react'
+import { ArrowBigUp, Clock, Crown, Crosshair, Footprints, Pickaxe, Skull, Sword, type LucideIcon } from 'lucide-react'
 import { Chargement, EnTete, Tete } from '@/components/communs'
 import { corps, useApi, type StatsJoueur } from '@/lib/api'
 import { cn, distance, duree, nombre } from '@/lib/utils'
 
 type Cle = Exclude<keyof StatsJoueur, 'uuid' | 'nom'>
 
-const STATS: { cle: Cle; nom: string; icone: LucideIcon; format: (n: number) => string }[] = [
-  { cle: 'tempsDeJeu', nom: 'Temps de jeu', icone: Clock, format: duree },
-  { cle: 'blocsMines', nom: 'Blocs minés', icone: Pickaxe, format: nombre },
-  { cle: 'mobsTues', nom: 'Mobs tués', icone: Sword, format: nombre },
-  { cle: 'distance', nom: 'Distance', icone: Footprints, format: distance },
-  { cle: 'joueursTues', nom: 'PvP', icone: Crosshair, format: nombre },
-  { cle: 'morts', nom: 'Morts', icone: Skull, format: nombre },
-  { cle: 'sauts', nom: 'Sauts', icone: ArrowBigUp, format: nombre },
+const STATS: { cle: Cle; nom: string; icone: LucideIcon; format: (n: number) => string; blague: string }[] = [
+  { cle: 'tempsDeJeu', nom: 'Temps de jeu', icone: Clock, format: duree, blague: "Pensez à toucher de l'herbe. La vraie." },
+  { cle: 'blocsMines', nom: 'Blocs minés', icone: Pickaxe, format: nombre, blague: 'Des taupes déguisées en humains.' },
+  { cle: 'mobsTues', nom: 'Mobs tués', icone: Sword, format: nombre, blague: 'Les zombies ont peur de ces gens-là.' },
+  { cle: 'distance', nom: 'Distance', icone: Footprints, format: distance, blague: 'Ils ne tiennent pas en place.' },
+  { cle: 'joueursTues', nom: 'PvP', icone: Crosshair, format: nombre, blague: "L'amitié, c'est surfait." },
+  { cle: 'morts', nom: 'Morts', icone: Skull, format: nombre, blague: 'Le mur de la honte. Respect quand même.' },
+  { cle: 'sauts', nom: 'Sauts', icone: ArrowBigUp, format: nombre, blague: 'Des lapins, en vrai.' },
 ]
 
 const MEDAILLES = [
@@ -37,7 +37,7 @@ export default function Classements() {
       <EnTete surtitre="Hall of fame" titre="Classements" />
 
       {/* Onglets : la pastille glisse d'une stat à l'autre */}
-      <div className="-mx-4 mb-12 overflow-x-auto px-4 [scrollbar-width:none]">
+      <div className="-mx-4 mb-4 overflow-x-auto px-4 [scrollbar-width:none]">
         <LayoutGroup id="stats">
           <div className="inline-flex gap-1 rounded-full border border-border bg-card p-1">
             {STATS.map((s) => {
@@ -67,6 +67,19 @@ export default function Classements() {
           </div>
         </LayoutGroup>
       </div>
+      <div className="mb-12 h-6">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={cle}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="font-pixel text-sm text-[#ffff55]"
+          >
+            {stat.blague}
+          </motion.p>
+        </AnimatePresence>
+      </div>
 
       {erreur && <p className="text-center text-red-400">{erreur}</p>}
       {!data && !erreur && <Chargement />}
@@ -90,6 +103,15 @@ export default function Classements() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 22, delay: [0.1, 0, 0.2][rang] }}
               >
+                {rang === 0 && (
+                  <motion.div
+                    animate={{ y: [0, -8, 0], rotate: [-6, 6, -6] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                    className={cle === 'morts' ? 'text-slate-200' : 'text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.7)]'}
+                  >
+                    {cle === 'morts' ? <Skull size={30} /> : <Crown size={32} fill="currentColor" />}
+                  </motion.div>
+                )}
                 <img
                   src={corps(j.uuid, 120)}
                   alt=""
