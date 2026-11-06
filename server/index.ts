@@ -62,10 +62,10 @@ const relever = () => releverStats().catch((e) => console.error('Relevé des sta
 void relever()
 setInterval(relever, 10 * 60_000)
 
-// Historique du détecteur de X-ray : une fois par heure
+// Détecteur de X-ray : historique + alertes, toutes les 30 minutes
 const noterXray = () => enregistrerXray().catch((e) => console.error('Historique X-ray :', e))
 void noterXray()
-setInterval(noterXray, 60 * 60_000)
+setInterval(noterXray, 30 * 60_000)
 
 app.listen(config.port, () => {
   console.log(`Site Minecraft prêt sur http://localhost:${config.port}`)

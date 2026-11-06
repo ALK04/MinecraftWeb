@@ -54,7 +54,9 @@ type Reponse = {
   historique: Record<string, Point[]>
   notes: Record<string, Note>
   recents: (Filon & { uuid: string; nom: string })[]
+  alertes: Alerte[]
 }
+type Alerte = { id: number; le: string; uuid: string; nom: string; niveau: 'surveiller' | 'suspect'; raison: string; vue: boolean }
 
 const VERDICTS = {
   suspect: { nom: 'Suspect', icone: ShieldAlert, classe: 'border-red-400/40 bg-red-500/10 text-red-300' },
@@ -207,6 +209,14 @@ export default function Admin() {
         </div>
       </div>
 
+      <Alertes
+        alertes={data.alertes}
+        lues={async () => {
+          await api('/api/admin/alertes/vues', { method: 'POST', headers: { 'x-admin': mdp } }).catch(() => {})
+          void charger()
+        }}
+      />
+
       {/* Fil en direct des dernières trouvailles */}
       {data.recents.length > 0 && (
         <section className="mb-8 rounded-3xl border border-border bg-card p-5">
@@ -348,7 +358,8 @@ function LigneJoueur({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.04 }}
-      className={cn('overflow-hidden rounded-3xl border bg-card', j.verdict === 'suspect' ? 'border-red-400/40' : 'border-border')}
+      id={`joueur-${j.uuid}`}
+      className={cn('scroll-mt-28 overflow-hidden rounded-3xl border bg-card', j.verdict === 'suspect' ? 'border-red-400/40' : 'border-border')}
     >
       <button onClick={() => setOuvert((o) => !o)} className="flex w-full flex-wrap items-center gap-4 p-4 text-left">
         <Tete uuid={j.uuid} nom={j.nom} taille={40} />
@@ -506,6 +517,92 @@ function CarteFilon({ f }: { f: Filon }) {
         </button>
       </div>
     </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Alertes : ce qui s'est passé depuis ta dernière visite
+// ------------------------------------------------------------------
+function Alertes({ alertes, lues }: { alertes: Alerte[]; lues: () => void }) {
+  const nouvelles = alertes.filter((a) => !a.vue)
+  const [toutes, setToutes] = useState(false)
+  const liste = toutes ? alertes : nouvelles
+
+  useEffect(() => {
+    document.title = nouvelles.length ? `(${nouvelles.length}) Alertes X-ray` : 'Admin · Secteur-3'
+  }, [nouvelles.length])
+
+  if (alertes.length === 0) {
+    return (
+      <div className="mb-8 flex items-center gap-3 rounded-3xl border border-primary/25 bg-primary/5 px-5 py-4 text-sm">
+        <ShieldCheck size={20} className="text-primary" />
+        Aucune alerte pour l'instant. Le serveur vérifie tout seul toutes les 30 minutes.
+      </div>
+    )
+  }
+
+  return (
+    <section
+      className={cn(
+        'mb-8 rounded-3xl border p-5',
+        nouvelles.length ? 'border-red-400/40 bg-red-500/10' : 'border-border bg-card',
+      )}
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 font-pixel text-base">
+          <ShieldAlert size={18} className={nouvelles.length ? 'text-red-300' : 'text-muted-foreground'} />
+          {nouvelles.length
+            ? `${nouvelles.length} nouvelle${nouvelles.length > 1 ? 's' : ''} alerte${nouvelles.length > 1 ? 's' : ''} depuis ta dernière visite`
+            : 'Pas de nouvelle alerte'}
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => setToutes((t) => !t)} className="text-xs text-muted-foreground underline hover:text-foreground">
+            {toutes ? 'Seulement les nouvelles' : `Voir l'historique (${alertes.length})`}
+          </button>
+          {nouvelles.length > 0 && (
+            <Bouton variante="secondaire" className="px-3 py-1.5 text-xs" onClick={lues}>
+              Marquer comme lues
+            </Bouton>
+          )}
+        </div>
+      </div>
+      <ul className="space-y-2">
+        {liste.map((a) => (
+          <li key={a.id} className={cn('flex gap-3 rounded-2xl bg-background/40 p-3', a.vue && 'opacity-60')}>
+            <Tete uuid={a.uuid} nom={a.nom} taille={36} />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="flex flex-wrap items-center gap-2">
+                <b>{a.nom}</b>
+                <span
+                  className={cn(
+                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                    a.niveau === 'suspect' ? 'bg-red-500/20 text-red-300' : 'bg-amber-300/15 text-amber-200',
+                  )}
+                >
+                  {a.niveau === 'suspect' ? 'Suspect' : 'À surveiller'}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(a.le.replace(' ', 'T') + 'Z').toLocaleString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </p>
+              <p className="mt-1 text-muted-foreground">{a.raison}</p>
+              <button
+                onClick={() => document.getElementById(`joueur-${a.uuid}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="mt-1 text-xs font-semibold text-primary hover:underline"
+              >
+                Voir sa fiche ↓
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

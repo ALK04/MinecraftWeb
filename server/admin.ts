@@ -188,6 +188,50 @@ const ecrireNote = db.prepare(`
 
 const formatJour = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' })
 
+// ------------------------------------------------------------------
+// Alertes : quand un joueur passe « à surveiller » ou « suspect »,
+// on note une alerte avec la raison, à lire à la prochaine visite.
+// ------------------------------------------------------------------
+db.exec(`
+  CREATE TABLE IF NOT EXISTS xray_etat (uuid TEXT PRIMARY KEY, verdict TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS xray_alertes (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    le      TEXT NOT NULL DEFAULT (datetime('now')),
+    uuid    TEXT NOT NULL,
+    nom     TEXT NOT NULL,
+    niveau  TEXT NOT NULL,
+    raison  TEXT NOT NULL,
+    vue     INTEGER NOT NULL DEFAULT 0
+  );
+`)
+const lireEtat = db.prepare('SELECT verdict FROM xray_etat WHERE uuid = ?')
+const ecrireEtat = db.prepare('INSERT OR REPLACE INTO xray_etat (uuid, verdict) VALUES (?, ?)')
+const creerAlerte = db.prepare('INSERT INTO xray_alertes (uuid, nom, niveau, raison) VALUES (?, ?, ?, ?)')
+const lireAlertes = db.prepare('SELECT id, le, uuid, nom, niveau, raison, vue FROM xray_alertes ORDER BY id DESC LIMIT 30')
+const marquerVues = db.prepare('UPDATE xray_alertes SET vue = 1 WHERE vue = 0')
+
+const GRAVITE = { pas_assez: 0, ok: 0, surveiller: 1, suspect: 2 }
+const virgule = (n: number) => String(n).replace('.', ',')
+
+// La raison, en clair
+function raisonDe(r: RapportXray): string {
+  const morceaux: string[] = []
+  const l = r.ledger
+  if (l?.diamant.indice != null) {
+    morceaux.push(
+      `Diamants ×${virgule(l.diamant.indice)} : ${l.diamant.creuses} filons trouvés en creusant, avec seulement ${l.diamant.blocsParFilon} blocs creusés par filon (normal : 120 et plus)` +
+        (l.diamant.decouverts ? `, et ${l.diamant.decouverts} à découvert` : '') + '.',
+    )
+  }
+  if (l?.debris.indice != null) {
+    morceaux.push(`Débris ×${virgule(l.debris.indice)} : ${l.debris.creuses} trouvés en creusant, ${l.debris.blocsParFilon} blocs par débris (normal : 80 et plus).`)
+  }
+  if (!l && r.indiceDiamant != null) {
+    morceaux.push(`Estimation par les stats : ${r.diamantPour1000} diamants pour 1 000 pierres (normal : ~4), soit ×${virgule(r.indiceDiamant)}.`)
+  }
+  return morceaux.join(' ') || 'Indice anormal.'
+}
+
 export async function enregistrerXray() {
   const jour = formatJour.format(new Date())
   for (const r of await rapports()) {
@@ -195,6 +239,11 @@ export async function enregistrerXray() {
     const n = r.ledger ? r.ledger.debris.indice : r.indiceDebris
     const filons = (r.ledger?.diamant.filons ?? 0) + (r.ledger?.debris.filons ?? 0)
     noterJour.run(jour, r.uuid, d, n, filons, r.verdict)
+
+    // Ça s'aggrave ? -> alerte
+    const avant = (lireEtat.get(r.uuid) as { verdict: keyof typeof GRAVITE } | undefined)?.verdict ?? 'ok'
+    if (GRAVITE[r.verdict] > GRAVITE[avant]) creerAlerte.run(r.uuid, r.nom, r.verdict, raisonDe(r))
+    ecrireEtat.run(r.uuid, r.verdict)
   }
 }
 
@@ -220,7 +269,14 @@ export function routesAdmin(): Router {
       .flatMap((j) => (j.ledger?.derniers ?? []).map((f) => ({ ...f, uuid: j.uuid, nom: j.nom, chemin: [] })))
       .sort((a, b) => b.le.localeCompare(a.le))
       .slice(0, 15)
-    res.json({ reference: REFERENCE, minimum: MINIMUM, ledger: ledgerActif(), maintenant: new Date().toISOString(), joueurs, historique, notes, recents })
+    const alertes = (lireAlertes.all() as { id: number; le: string; uuid: string; nom: string; niveau: string; raison: string; vue: number }[]).map((x) => ({ ...x, vue: Boolean(x.vue) }))
+    res.json({ reference: REFERENCE, minimum: MINIMUM, ledger: ledgerActif(), maintenant: new Date().toISOString(), joueurs, historique, notes, recents, alertes })
+  })
+
+  // « J'ai vu les alertes »
+  r.post('/alertes/vues', (_req, res) => {
+    marquerVues.run()
+    res.json({ ok: true })
   })
 
   // Marquer un joueur « à surveiller » et lui laisser une note
