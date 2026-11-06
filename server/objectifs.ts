@@ -93,8 +93,33 @@ function antiSpam(req: Request, res: Response, next: NextFunction) {
 // ------------------------------------------------------------------
 // Routes : /api/objectifs
 // ------------------------------------------------------------------
+// Les navigateurs connectés au flux temps réel
+const abonnes = new Set<Response>()
+function notifier() {
+  for (const res of abonnes) res.write('data: maj\n\n')
+}
+
 export function routesObjectifs(): Router {
   const r = Router()
+
+  // Temps réel : chaque navigateur garde cette connexion ouverte et reçoit
+  // un petit signal dès que le mur change (Server-Sent Events)
+  r.get('/flux', (req, res) => {
+    res.set({
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+      'x-accel-buffering': 'no',
+    })
+    res.flushHeaders()
+    res.write('retry: 5000\n\n')
+    abonnes.add(res)
+    const battement = setInterval(() => res.write(': ping\n\n'), 25_000)
+    req.on('close', () => {
+      clearInterval(battement)
+      abonnes.delete(res)
+    })
+  })
 
   r.get('/', (_req, res) => {
     res.json({
@@ -120,6 +145,7 @@ export function routesObjectifs(): Router {
     if (pour !== null && !PSEUDO.test(pour)) return void res.status(400).json({ erreur: 'Pseudo "pour" invalide' })
 
     const { lastInsertRowid } = inserer.run(titre, description, categorie, pour, auteur)
+    notifier()
     res.status(201).json(lireUn.get(lastInsertRowid))
   })
 
@@ -148,11 +174,13 @@ export function routesObjectifs(): Router {
       default:
         return void res.status(400).json({ erreur: 'Action inconnue' })
     }
+    notifier()
     res.json(lireUn.get(obj.id))
   })
 
   r.delete('/:id', antiSpam, verifierCode, (req, res) => {
     supprimer.run(Number(req.params.id))
+    notifier()
     res.status(204).end()
   })
 
