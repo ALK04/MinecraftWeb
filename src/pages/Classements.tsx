@@ -1,8 +1,8 @@
 import { useState, type MouseEvent } from 'react'
 import { motion, AnimatePresence, LayoutGroup, useAnimate } from 'motion/react'
 import { ArrowBigUp, Clock, Crown, Crosshair, Footprints, Pickaxe, Skull, Sword, Trophy, type LucideIcon } from 'lucide-react'
-import { Chargement, EnTete, Tete } from '@/components/communs'
-import { corps, useApi, type Joueur, type StatsJoueur } from '@/lib/api'
+import { Chargement, Corps, EnTete, Tete } from '@/components/communs'
+import { useApi, type Joueur, type StatsJoueur } from '@/lib/api'
 import { defSucces, IDS, useJeu } from '@/lib/jeu'
 import { sons } from '@/lib/sons'
 import { cn, distance, duree, nombre } from '@/lib/utils'
@@ -135,11 +135,10 @@ export default function Classements() {
                     {cle === 'morts' ? <Skull size={30} /> : <Crown size={32} fill="currentColor" />}
                   </motion.div>
                 )}
-                <img
-                  src={corps(j.uuid, 120)}
+                <Corps
+                  uuid={j.uuid}
                   alt=""
-                  className={cn('pixel mb-2 h-24 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] sm:h-32', rang === 0 && 'sm:h-40')}
-                  onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+                  className={cn('mb-2 h-24 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] sm:h-32', rang === 0 && 'sm:h-40')}
                 />
                 <p className="max-w-full truncate text-sm font-bold sm:text-base">{j.nom}</p>
                 <p className={cn('mb-3 text-xs font-semibold tabular-nums sm:text-sm', m.texte)}>{stat.format(j.valeur)}</p>

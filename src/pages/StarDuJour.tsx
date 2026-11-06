@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Footprints, Hand, Mic, Pickaxe, Skull, Sparkles, Sword, ArrowBigUp } from 'lucide-react'
-import { Chargement, Tete } from '@/components/communs'
-import { corps, useApi, type StatsJoueur } from '@/lib/api'
+import { Chargement, Corps, Tete } from '@/components/communs'
+import { useApi, type StatsJoueur } from '@/lib/api'
 import { useJeu } from '@/lib/jeu'
 import { sons } from '@/lib/sons'
 import { cn, distance, duree, ecrireStockage, lireStockage, nombre } from '@/lib/utils'
@@ -105,15 +105,14 @@ export default function StarDuJour() {
             animate={{ rotate: 360 }}
             transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
           />
-          <motion.img
-            src={corps(p.uuid, 260)}
+          <Corps
+            uuid={p.uuid}
             alt={p.nom}
-            className="pixel mx-auto h-64 drop-shadow-[0_20px_40px_rgba(0,0,0,0.7)] sm:h-80"
+            className="mx-auto h-64 drop-shadow-[0_20px_40px_rgba(0,0,0,0.7)] sm:h-80"
             initial={{ y: 200, opacity: 0, rotate: -10 }}
             animate={{ y: [0, -10, 0], opacity: 1, rotate: 0 }}
             transition={{ y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 1 }, default: { type: 'spring', stiffness: 80, damping: 12 } }}
             whileHover={{ scale: 1.06, rotate: 4 }}
-            onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
           />
           {/* Le tapis rouge */}
           <div className="mx-auto -mt-2 h-4 w-56 rounded-[50%] bg-[#b3122e] shadow-[0_0_40px_10px_rgba(179,18,46,0.35)]" />

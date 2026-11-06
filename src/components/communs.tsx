@@ -1,34 +1,40 @@
-import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { type ButtonHTMLAttributes, type ComponentProps, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { X } from 'lucide-react'
-import { tete } from '@/lib/api'
+import { useSkin } from '@/lib/skins'
 import { cn } from '@/lib/utils'
 
 // Tête du skin d'un joueur
 export function Tete({ uuid, nom, taille = 32, className }: { uuid: string; nom: string; taille?: number; className?: string }) {
-  const [rate, setRate] = useState(false)
-  if (rate) {
+  const skin = useSkin(uuid)
+  if (!skin) {
     return (
       <div
         style={{ width: taille, height: taille }}
         className={cn('grid place-items-center rounded-md bg-muted font-pixel text-muted-foreground', className)}
       >
-        {nom.slice(0, 1).toUpperCase()}
+        {skin === null && nom.slice(0, 1).toUpperCase()}
       </div>
     )
   }
   return (
     <img
-      src={tete(uuid, Math.max(taille * 2, 32))}
+      src={skin.tete}
       alt={nom}
       title={nom}
       width={taille}
       height={taille}
-      loading="lazy"
-      onError={() => setRate(true)}
       className={cn('pixel rounded-md', className)}
     />
   )
+}
+
+// Corps entier du joueur, vu de face (accepte les animations de motion)
+export function Corps({ uuid, className, ...props }: { uuid: string } & ComponentProps<typeof motion.img>) {
+  const skin = useSkin(uuid)
+  // Pas encore chargé ou pas de skin : on garde la place, sans rien afficher
+  if (!skin) return <div aria-hidden className={cn('aspect-[1/2]', className)} />
+  return <motion.img src={skin.corps} className={cn('pixel', className)} {...props} />
 }
 
 // Titre de page avec apparition en fondu + flou

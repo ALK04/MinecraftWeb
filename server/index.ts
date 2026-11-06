@@ -10,6 +10,7 @@ import { routesSucces } from './succes.ts'
 import { routesScores } from './scores.ts'
 import { enregistrerXray, routesAdmin } from './admin.ts'
 import { joueurDuJour, releverStats } from './joueurDuJour.ts'
+import { routesSkins } from './skins.ts'
 
 const app = express()
 app.set('trust proxy', 1) // derrière Caddy : la vraie IP du visiteur est dans X-Forwarded-For
@@ -34,6 +35,7 @@ app.use('/api/objectifs', routesObjectifs())
 app.use('/api/succes', routesSucces())
 app.use('/api/scores', routesScores())
 app.use('/api/admin', routesAdmin())
+app.use('/api/skin', routesSkins())
 
 app.get('/api/joueur-du-jour', async (_req, res) => {
   res.json(await joueurDuJour())
