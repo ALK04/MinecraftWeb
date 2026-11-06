@@ -6,6 +6,7 @@ import { config } from './config.ts'
 import { lireJoueurs } from './joueurs.ts'
 import { limiteur } from './limite.ts'
 import { analyserLedger, ledgerActif, type AnalyseLedger } from './ledger.ts'
+import { db } from './db.ts'
 
 // =============================================================
 //  Espace admin : détection de X-ray, à partir des statistiques
@@ -150,11 +151,86 @@ function verifierAdmin(req: Request, res: Response, next: NextFunction) {
   res.status(403).json({ erreur: 'Mot de passe incorrect' })
 }
 
+// ------------------------------------------------------------------
+// Historique : l'indice de chacun est noté toutes les heures (une ligne
+// par joueur et par jour, mise à jour au fil de la journée)
+// ------------------------------------------------------------------
+db.exec(`
+  CREATE TABLE IF NOT EXISTS xray_historique (
+    jour           TEXT NOT NULL,
+    uuid           TEXT NOT NULL,
+    indice_diamant REAL,
+    indice_debris  REAL,
+    filons         INTEGER NOT NULL DEFAULT 0,
+    verdict        TEXT NOT NULL,
+    PRIMARY KEY (jour, uuid)
+  );
+  CREATE TABLE IF NOT EXISTS xray_notes (
+    uuid      TEXT PRIMARY KEY,
+    surveille INTEGER NOT NULL DEFAULT 0,
+    note      TEXT NOT NULL DEFAULT '',
+    le        TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`)
+const noterJour = db.prepare(`
+  INSERT OR REPLACE INTO xray_historique (jour, uuid, indice_diamant, indice_debris, filons, verdict)
+  VALUES (?, ?, ?, ?, ?, ?)
+`)
+const lireHistorique = db.prepare(`
+  SELECT jour, uuid, indice_diamant AS diamant, indice_debris AS debris, verdict
+  FROM xray_historique WHERE jour >= ? ORDER BY jour
+`)
+const lireNotes = db.prepare('SELECT uuid, surveille, note, le FROM xray_notes')
+const ecrireNote = db.prepare(`
+  INSERT INTO xray_notes (uuid, surveille, note, le) VALUES (?, ?, ?, datetime('now'))
+  ON CONFLICT(uuid) DO UPDATE SET surveille = excluded.surveille, note = excluded.note, le = excluded.le
+`)
+
+const formatJour = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' })
+
+export async function enregistrerXray() {
+  const jour = formatJour.format(new Date())
+  for (const r of await rapports()) {
+    const d = r.ledger ? r.ledger.diamant.indice : r.indiceDiamant
+    const n = r.ledger ? r.ledger.debris.indice : r.indiceDebris
+    const filons = (r.ledger?.diamant.filons ?? 0) + (r.ledger?.debris.filons ?? 0)
+    noterJour.run(jour, r.uuid, d, n, filons, r.verdict)
+  }
+}
+
 export function routesAdmin(): Router {
   const r = Router()
   r.use(verifierAdmin)
+
   r.get('/xray', async (_req, res) => {
-    res.json({ reference: REFERENCE, minimum: MINIMUM, ledger: ledgerActif(), joueurs: await rapports() })
+    const joueurs = await rapports()
+    const depuis = formatJour.format(new Date(Date.now() - 30 * 86_400_000))
+    const historique: Record<string, { jour: string; diamant: number | null; debris: number | null; verdict: string }[]> = {}
+    for (const h of lireHistorique.all(depuis) as { jour: string; uuid: string; diamant: number | null; debris: number | null; verdict: string }[]) {
+      ;(historique[h.uuid] ??= []).push({ jour: h.jour, diamant: h.diamant, debris: h.debris, verdict: h.verdict })
+    }
+    const notes = Object.fromEntries(
+      (lireNotes.all() as { uuid: string; surveille: number; note: string; le: string }[]).map((n) => [
+        n.uuid,
+        { surveille: Boolean(n.surveille), note: n.note, le: n.le },
+      ]),
+    )
+    // Le fil en direct : les dernières trouvailles, tous joueurs confondus
+    const recents = joueurs
+      .flatMap((j) => (j.ledger?.derniers ?? []).map((f) => ({ ...f, uuid: j.uuid, nom: j.nom, chemin: [] })))
+      .sort((a, b) => b.le.localeCompare(a.le))
+      .slice(0, 15)
+    res.json({ reference: REFERENCE, minimum: MINIMUM, ledger: ledgerActif(), maintenant: new Date().toISOString(), joueurs, historique, notes, recents })
   })
+
+  // Marquer un joueur « à surveiller » et lui laisser une note
+  r.put('/notes/:uuid', (req, res) => {
+    const uuid = String(req.params.uuid)
+    if (!/^[0-9a-f-]{32,36}$/i.test(uuid)) return void res.status(400).json({ erreur: 'Joueur invalide' })
+    const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, 500) : ''
+    ecrireNote.run(uuid, req.body?.surveille ? 1 : 0, note)
+    res.json({ ok: true })
+  })
+
   return r
 }

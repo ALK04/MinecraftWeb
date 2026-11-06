@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Eye, Gem, KeyRound, LogOut, Map, RefreshCw, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import { Bouton, EnTete, Tete, champ } from '@/components/communs'
@@ -44,7 +44,17 @@ type Filon = {
   chemin: [number, number, number][]
 }
 type Ledger = { diamant: AnalyseMinerai; debris: AnalyseMinerai; derniers: Filon[] }
-type Reponse = { reference: { diamant: number; debris: number }; minimum: { pierre: number; nether: number }; joueurs: Rapport[] }
+type Point = { jour: string; diamant: number | null; debris: number | null; verdict: string }
+type Note = { surveille: boolean; note: string; le: string }
+type Reponse = {
+  reference: { diamant: number; debris: number }
+  minimum: { pierre: number; nether: number }
+  maintenant: string
+  joueurs: Rapport[]
+  historique: Record<string, Point[]>
+  notes: Record<string, Note>
+  recents: (Filon & { uuid: string; nom: string })[]
+}
 
 const VERDICTS = {
   suspect: { nom: 'Suspect', icone: ShieldAlert, classe: 'border-red-400/40 bg-red-500/10 text-red-300' },
@@ -107,6 +117,23 @@ export default function Admin() {
     if (mdp) void charger()
   }, [])
 
+  // Mode direct : on recharge toute seule toutes les 20 secondes
+  const [direct, setDirect] = useState(true)
+  const [maintenant, setMaintenant] = useState(Date.now())
+  const chargerRef = useRef(charger)
+  chargerRef.current = charger
+  useEffect(() => {
+    if (!direct || !mdp) return
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') void chargerRef.current()
+    }, 20_000)
+    return () => clearInterval(id)
+  }, [direct, mdp])
+  useEffect(() => {
+    const id = setInterval(() => setMaintenant(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
   if (!mdp || !data) {
     return <Connexion erreur={erreur} charge={charge} valider={(m) => void charger(m)} />
   }
@@ -116,7 +143,21 @@ export default function Admin() {
   return (
     <main className="mx-auto max-w-6xl px-4 pt-14 sm:pt-32">
       <EnTete surtitre="Espace admin" titre="Détecteur de X-ray">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setDirect((d) => !d)}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition',
+              direct ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border text-muted-foreground',
+            )}
+            title="Mise à jour automatique toutes les 20 secondes"
+          >
+            <span className={cn('size-2 rounded-full', direct ? 'animate-pulse bg-primary' : 'bg-muted-foreground')} />
+            {direct ? 'En direct' : 'Direct coupé'}
+            <span className="font-normal text-muted-foreground tabular-nums">
+              · il y a {Math.max(0, Math.round((maintenant - Date.parse(data.maintenant)) / 1000))} s
+            </span>
+          </button>
           <Bouton variante="secondaire" onClick={() => void charger()} disabled={charge}>
             <RefreshCw size={15} className={cn(charge && 'animate-spin')} /> Actualiser
           </Bouton>
@@ -166,11 +207,59 @@ export default function Admin() {
         </div>
       </div>
 
+      {/* Fil en direct des dernières trouvailles */}
+      {data.recents.length > 0 && (
+        <section className="mb-8 rounded-3xl border border-border bg-card p-5">
+          <p className="mb-3 flex items-center gap-2 font-pixel text-base">
+            <span className="size-2 animate-pulse rounded-full bg-[#6ff3fb]" /> Dernières trouvailles
+          </p>
+          <ul className="space-y-1.5">
+            <AnimatePresence initial={false}>
+              {data.recents.map((f) => (
+                <motion.li
+                  key={`${f.uuid}-${f.le}`}
+                  layout
+                  initial={{ opacity: 0, x: -12, backgroundColor: 'rgba(111,243,251,0.15)' }}
+                  animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(0,0,0,0)' }}
+                  transition={{ backgroundColor: { duration: 2 } }}
+                  className="flex flex-wrap items-center gap-2 rounded-xl px-2 py-1 text-sm"
+                >
+                  <Tete uuid={f.uuid} nom={f.nom} taille={20} />
+                  <b>{f.nom}</b>
+                  <span className="text-muted-foreground">
+                    {f.type === 'diamant' ? 'diamants' : 'débris'} ×{f.blocs}
+                  </span>
+                  <span
+                    className={cn(
+                      'rounded-full px-1.5 py-0.5 text-[10px]',
+                      f.decouvert ? 'bg-primary/15 text-primary' : 'bg-amber-300/15 text-amber-200',
+                    )}
+                  >
+                    {f.decouvert ? 'à découvert' : `creusé (${f.creuseAvant} blocs)`}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {new Date(f.le).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </section>
+      )}
+
       {data.joueurs.length === 0 && <p className="py-16 text-center text-muted-foreground">Aucune statistique pour l'instant.</p>}
 
       <div className="space-y-3">
         {data.joueurs.map((j, i) => (
-          <LigneJoueur key={j.uuid} j={j} i={i} />
+          <LigneJoueur
+            key={j.uuid}
+            j={j}
+            i={i}
+            historique={data.historique[j.uuid] ?? []}
+            note={data.notes[j.uuid] ?? null}
+            mdp={mdp}
+            recharger={() => void charger()}
+          />
         ))}
       </div>
     </main>
@@ -237,9 +326,23 @@ function Chiffre({ valeur, nom, rouge }: { valeur: number; nom: string; rouge?: 
   )
 }
 
-function LigneJoueur({ j, i }: { j: Rapport; i: number }) {
+function LigneJoueur({
+  j,
+  i,
+  historique,
+  note,
+  mdp,
+  recharger,
+}: {
+  j: Rapport
+  i: number
+  historique: Point[]
+  note: Note | null
+  mdp: string
+  recharger: () => void
+}) {
   const v = VERDICTS[j.verdict]
-  const [ouvert, setOuvert] = useState(j.verdict === 'suspect')
+  const [ouvert, setOuvert] = useState(j.verdict === 'suspect' || Boolean(note?.surveille))
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -250,7 +353,14 @@ function LigneJoueur({ j, i }: { j: Rapport; i: number }) {
       <button onClick={() => setOuvert((o) => !o)} className="flex w-full flex-wrap items-center gap-4 p-4 text-left">
         <Tete uuid={j.uuid} nom={j.nom} taille={40} />
         <div className="min-w-32 flex-1">
-          <p className="font-semibold">{j.nom}</p>
+          <p className="flex items-center gap-2 font-semibold">
+            {j.nom}
+            {note?.surveille && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] text-amber-200">
+                <Eye size={11} /> surveillé
+              </span>
+            )}
+          </p>
           <p className="text-xs text-muted-foreground">{duree(j.tempsDeJeu)} de jeu · {nombre(j.pierre)} pierres cassées</p>
         </div>
         {/* Avec le journal Ledger : l'indice précis ; sinon l'estimation par les stats */}
@@ -291,6 +401,10 @@ function LigneJoueur({ j, i }: { j: Rapport; i: number }) {
               </div>
             </div>
             {j.ledger && <Journal l={j.ledger} />}
+            <div className="grid gap-4 border-t border-border p-4 md:grid-cols-[1.3fr_1fr]">
+              <Courbe points={historique} />
+              <Surveillance uuid={j.uuid} note={note} mdp={mdp} recharger={recharger} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -390,6 +504,123 @@ function CarteFilon({ f }: { f: Filon }) {
         >
           {copie ? 'Copié !' : tp}
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Historique : l'indice jour après jour (30 derniers jours)
+// ------------------------------------------------------------------
+function Courbe({ points }: { points: Point[] }) {
+  const L = 320
+  const H = 110
+  const MAX = 6
+  const y = (v: number) => H - 8 - (Math.min(MAX, v) / MAX) * (H - 16)
+  const x = (k: number) => (points.length <= 1 ? L / 2 : 12 + (k * (L - 24)) / (points.length - 1))
+  const trace = (cle: 'diamant' | 'debris') =>
+    points
+      .map((p, k) => (p[cle] == null ? null : `${x(k)},${y(p[cle]!)}`))
+      .filter(Boolean)
+      .join(' ')
+
+  return (
+    <div>
+      <p className="mb-2 font-pixel text-sm">Historique de l'indice</p>
+      {points.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Rien d'enregistré pour l'instant : l'indice est noté automatiquement toutes les heures. Reviens demain pour voir
+          son évolution.
+        </p>
+      ) : (
+        <>
+          <svg viewBox={`0 0 ${L} ${H}`} className="w-full rounded-xl bg-background/40" role="img" aria-label="Évolution de l'indice X-ray">
+            {/* Zones : normal / à surveiller / suspect */}
+            <rect x={0} y={y(MAX)} width={L} height={y(3) - y(MAX)} fill="rgba(248,113,113,0.08)" />
+            <rect x={0} y={y(3)} width={L} height={y(2) - y(3)} fill="rgba(252,211,77,0.07)" />
+            <line x1={0} x2={L} y1={y(1)} y2={y(1)} stroke="rgba(255,255,255,0.25)" strokeDasharray="4 4" />
+            <text x={L - 4} y={y(1) - 3} textAnchor="end" fontSize={9} fill="rgba(255,255,255,0.45)">
+              normal (×1)
+            </text>
+            <text x={L - 4} y={y(3) - 3} textAnchor="end" fontSize={9} fill="rgba(248,113,113,0.7)">
+              suspect (×3)
+            </text>
+            <polyline points={trace('debris')} fill="none" stroke="#c08a6a" strokeWidth={1.5} />
+            <polyline points={trace('diamant')} fill="none" stroke="#6ff3fb" strokeWidth={2} />
+            {points.map((p, k) =>
+              p.diamant == null ? null : <circle key={k} cx={x(k)} cy={y(p.diamant)} r={2.5} fill="#6ff3fb" />,
+            )}
+          </svg>
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+            <span>{new Date(points[0].jour).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+            <span className="flex gap-3">
+              <span className="text-[#6ff3fb]">— diamants</span>
+              <span className="text-[#c08a6a]">— débris</span>
+            </span>
+            <span>{new Date(points.at(-1)!.jour).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// « Surveiller » ce joueur + une note, gardées sur le serveur
+// ------------------------------------------------------------------
+function Surveillance({ uuid, note, mdp, recharger }: { uuid: string; note: Note | null; mdp: string; recharger: () => void }) {
+  const [texte, setTexte] = useState(note?.note ?? '')
+  const [etat, setEtat] = useState<'' | 'envoi' | 'ok'>('')
+  const surveille = Boolean(note?.surveille)
+
+  const enregistrer = async (s: boolean, t: string) => {
+    setEtat('envoi')
+    try {
+      await api(`/api/admin/notes/${uuid}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-admin': mdp },
+        body: JSON.stringify({ surveille: s, note: t }),
+      })
+      setEtat('ok')
+      setTimeout(() => setEtat(''), 1500)
+      recharger()
+    } catch {
+      setEtat('')
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="font-pixel text-sm">Tes notes</p>
+        <button
+          onClick={() => void enregistrer(!surveille, texte)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition',
+            surveille ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : 'border-border text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <Eye size={13} /> {surveille ? 'Surveillé' : 'Surveiller'}
+        </button>
+      </div>
+      <textarea
+        value={texte}
+        onChange={(e) => setTexte(e.target.value)}
+        maxLength={500}
+        rows={3}
+        placeholder="Ex : indice ×4 le 12/11, tunnel bizarre en -120 -58 340. À revoir."
+        className={cn(champ, 'resize-none text-sm')}
+      />
+      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+        <span>{note?.le ? `Modifié le ${new Date(note.le.replace(' ', 'T') + 'Z').toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+        <Bouton
+          variante="secondaire"
+          className="px-3 py-1.5 text-xs"
+          disabled={etat === 'envoi' || texte === (note?.note ?? '')}
+          onClick={() => void enregistrer(surveille, texte)}
+        >
+          {etat === 'ok' ? 'Enregistré !' : 'Enregistrer la note'}
+        </Bouton>
       </div>
     </div>
   )

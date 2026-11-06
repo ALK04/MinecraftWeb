@@ -8,7 +8,7 @@ import { lireJoueurs } from './joueurs.ts'
 import { routesObjectifs } from './objectifs.ts'
 import { routesSucces } from './succes.ts'
 import { routesScores } from './scores.ts'
-import { routesAdmin } from './admin.ts'
+import { enregistrerXray, routesAdmin } from './admin.ts'
 import { joueurDuJour, releverStats } from './joueurDuJour.ts'
 
 const app = express()
@@ -61,6 +61,11 @@ if (existsSync(dist)) {
 const relever = () => releverStats().catch((e) => console.error('Relevé des stats :', e))
 void relever()
 setInterval(relever, 10 * 60_000)
+
+// Historique du détecteur de X-ray : une fois par heure
+const noterXray = () => enregistrerXray().catch((e) => console.error('Historique X-ray :', e))
+void noterXray()
+setInterval(noterXray, 60 * 60_000)
 
 app.listen(config.port, () => {
   console.log(`Site Minecraft prêt sur http://localhost:${config.port}`)
