@@ -4,6 +4,7 @@ import path from 'node:path'
 import { timingSafeEqual } from 'node:crypto'
 import { config } from './config.ts'
 import { lireJoueurs } from './joueurs.ts'
+import { dossierStats } from './classements.ts'
 import { limiteur } from './limite.ts'
 import { analyserLedger, ledgerActif, type AnalyseLedger } from './ledger.ts'
 import { db } from './db.ts'
@@ -96,7 +97,7 @@ function analyser(uuid: string, nom: string, stats: Record<string, Record<string
 }
 
 async function rapports(): Promise<RapportXray[]> {
-  const dossier = path.join(config.mcData, config.mcMonde, 'stats')
+  const dossier = dossierStats()
   let fichiers: string[]
   try {
     fichiers = (await readdir(dossier)).filter((f) => f.endsWith('.json'))

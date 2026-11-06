@@ -1,10 +1,18 @@
+import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { config } from './config.ts'
 import { lireJoueurs } from './joueurs.ts'
 
-// Minecraft enregistre les stats de chaque joueur dans <monde>/stats/<uuid>.json
-// (mis à jour à chaque sauvegarde automatique et quand le joueur se déconnecte).
+// Minecraft enregistre les stats de chaque joueur dans <monde>/players/stats/<uuid>.json
+// (<monde>/stats/ avant la 26.x), mis à jour à chaque sauvegarde automatique et quand
+// le joueur se déconnecte.
+export function dossierStats(): string {
+  const monde = path.join(config.mcData, config.mcMonde)
+  const nouveau = path.join(monde, 'players', 'stats')
+  return existsSync(nouveau) ? nouveau : path.join(monde, 'stats')
+}
+
 type FichierStats = { stats?: Record<string, Record<string, number>> }
 
 export type StatsJoueur = {
@@ -45,7 +53,7 @@ function calculer(uuid: string, nom: string, f: FichierStats): StatsJoueur {
 }
 
 async function lireClassements(): Promise<StatsJoueur[]> {
-  const dossier = path.join(config.mcData, config.mcMonde, 'stats')
+  const dossier = dossierStats()
   let fichiers: string[]
   try {
     fichiers = (await readdir(dossier)).filter((f) => f.endsWith('.json'))
