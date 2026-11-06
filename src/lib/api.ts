@@ -85,7 +85,3 @@ export function useApi<T>(url: string, intervalle?: number) {
 
   return { data, erreur, recharger }
 }
-
-// Têtes et corps des skins Minecraft
-export const tete = (uuid: string, taille = 64) => `https://mc-heads.net/avatar/${uuid}/${taille}`
-export const corps = (uuid: string, taille = 120) => `https://mc-heads.net/body/${uuid}/${taille}`
