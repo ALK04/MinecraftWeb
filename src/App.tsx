@@ -15,6 +15,7 @@ import Objectifs from '@/pages/Objectifs'
 import Cimetiere from '@/pages/Cimetiere'
 import MiniJeu from '@/pages/MiniJeu'
 import StarDuJour from '@/pages/StarDuJour'
+import Admin from '@/pages/Admin'
 
 const liens: NavItem[] = [
   { name: 'Accueil', url: '/', icon: Home },
@@ -63,6 +64,7 @@ export function App() {
             <Route path="/cimetiere" element={<Cimetiere />} />
             <Route path="/mini-jeu" element={<MiniJeu />} />
             <Route path="/star-du-jour" element={<StarDuJour />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<Introuvable />} />
           </Routes>
         </motion.div>

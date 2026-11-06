@@ -21,4 +21,7 @@ export const config = {
   // Code à donner aux potes pour pouvoir écrire sur le tableau des objectifs.
   // Vide = tout le monde peut écrire (déconseillé sur Internet).
   codeObjectifs: env.CODE_OBJECTIFS ?? '',
+
+  // Mot de passe de l'espace admin (/admin). Vide = espace admin désactivé.
+  adminMdp: env.ADMIN_MDP ?? '',
 }

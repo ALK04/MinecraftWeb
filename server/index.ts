@@ -8,6 +8,7 @@ import { lireJoueurs } from './joueurs.ts'
 import { routesObjectifs } from './objectifs.ts'
 import { routesSucces } from './succes.ts'
 import { routesScores } from './scores.ts'
+import { routesAdmin } from './admin.ts'
 import { joueurDuJour, releverStats } from './joueurDuJour.ts'
 
 const app = express()
@@ -32,6 +33,7 @@ app.get('/api/joueurs', async (_req, res) => {
 app.use('/api/objectifs', routesObjectifs())
 app.use('/api/succes', routesSucces())
 app.use('/api/scores', routesScores())
+app.use('/api/admin', routesAdmin())
 
 app.get('/api/joueur-du-jour', async (_req, res) => {
   res.json(await joueurDuJour())
