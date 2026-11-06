@@ -5,6 +5,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { config } from './config.ts'
 import { lireJoueurs } from './joueurs.ts'
 import { limiteur } from './limite.ts'
+import { analyserLedger, ledgerActif, type AnalyseLedger } from './ledger.ts'
 
 // =============================================================
 //  Espace admin : détection de X-ray, à partir des statistiques
@@ -44,6 +45,8 @@ export type RapportXray = {
   indiceDiamant: number | null
   indiceDebris: number | null
   verdict: 'ok' | 'surveiller' | 'suspect' | 'pas_assez'
+  // Analyse précise par le journal Ledger (si installé)
+  ledger: AnalyseLedger | null
 }
 
 const MINERAIS: Record<string, string[]> = {
@@ -87,6 +90,7 @@ function analyser(uuid: string, nom: string, stats: Record<string, Record<string
     indiceDiamant: indiceDiamant === null ? null : arrondi(indiceDiamant),
     indiceDebris: indiceDebris === null ? null : arrondi(indiceDebris),
     verdict,
+    ledger: null,
   }
 }
 
@@ -110,6 +114,22 @@ async function rapports(): Promise<RapportXray[]> {
       }
     }),
   )
+  // Le journal Ledger, quand il a assez de données, remplace l'estimation par les stats
+  const journal = analyserLedger()
+  for (const r of liste) {
+    if (!r) continue
+    r.ledger = journal.get(r.uuid) ?? null
+    const indices = [r.ledger?.diamant.indice, r.ledger?.debris.indice].filter((i): i is number => i != null)
+    if (indices.length) {
+      const pire = Math.max(...indices)
+      r.verdict = pire > 3 ? 'suspect' : pire > 2 ? 'surveiller' : 'ok'
+    } else if (r.ledger) {
+      // Le journal existe mais pas assez de filons creusés pour juger :
+      // s'il en a trouvé plusieurs à découvert (grottes), c'est normal.
+      const trouves = r.ledger.diamant.filons + r.ledger.debris.filons
+      r.verdict = trouves >= 3 ? 'ok' : 'pas_assez'
+    }
+  }
   const ordre = { suspect: 0, surveiller: 1, ok: 2, pas_assez: 3 }
   return liste
     .filter((r): r is RapportXray => r !== null)
@@ -134,7 +154,7 @@ export function routesAdmin(): Router {
   const r = Router()
   r.use(verifierAdmin)
   r.get('/xray', async (_req, res) => {
-    res.json({ reference: REFERENCE, minimum: MINIMUM, joueurs: await rapports() })
+    res.json({ reference: REFERENCE, minimum: MINIMUM, ledger: ledgerActif(), joueurs: await rapports() })
   })
   return r
 }

@@ -20,7 +20,30 @@ type Rapport = {
   indiceDiamant: number | null
   indiceDebris: number | null
   verdict: 'ok' | 'surveiller' | 'suspect' | 'pas_assez'
+  ledger: Ledger | null
 }
+
+// Analyse du journal Ledger (voir server/ledger.ts)
+type AnalyseMinerai = {
+  filons: number
+  decouverts: number
+  creuses: number
+  roche: number
+  blocsParFilon: number | null
+  indice: number | null
+}
+type Filon = {
+  type: 'diamant' | 'debris'
+  x: number
+  y: number
+  z: number
+  le: string
+  blocs: number
+  decouvert: boolean
+  creuseAvant: number
+  chemin: [number, number, number][]
+}
+type Ledger = { diamant: AnalyseMinerai; debris: AnalyseMinerai; derniers: Filon[] }
 type Reponse = { reference: { diamant: number; debris: number }; minimum: { pierre: number; nether: number }; joueurs: Rapport[] }
 
 const VERDICTS = {
@@ -125,7 +148,7 @@ export default function Admin() {
             <li><b className="text-red-300">plus de 3</b> : suspect</li>
           </ul>
           <p className="mt-3 text-xs">
-            Ce n'est qu'un indice : grottes, TNT ou coffres peuvent le faire monter. Regarde ses galeries sur la carte
+            Ce n'est qu'un indice. Ouvre la fiche d'un joueur pour voir son journal : comment il a trouvé chaque filon (à découvert ou en creusant) et le tunnel creusé juste avant. Toujours vérifier en jeu
             avant d'accuser quelqu'un. Jugé à partir de {nombre(data.minimum.pierre)} pierres cassées.
           </p>
         </div>
@@ -138,7 +161,7 @@ export default function Admin() {
             rel="noreferrer"
             className="col-span-2 flex items-center justify-center gap-2 rounded-3xl border border-border bg-card p-4 text-sm font-semibold transition hover:border-primary/40"
           >
-            <Map size={16} /> Ouvrir la carte pour vérifier les galeries
+            <Map size={16} /> Ouvrir la carte du monde
           </a>
         </div>
       </div>
@@ -230,8 +253,9 @@ function LigneJoueur({ j, i }: { j: Rapport; i: number }) {
           <p className="font-semibold">{j.nom}</p>
           <p className="text-xs text-muted-foreground">{duree(j.tempsDeJeu)} de jeu · {nombre(j.pierre)} pierres cassées</p>
         </div>
-        <Jauge nom="Diamants" indice={j.indiceDiamant} />
-        <Jauge nom="Débris" indice={j.indiceDebris} />
+        {/* Avec le journal Ledger : l'indice précis ; sinon l'estimation par les stats */}
+        <Jauge nom="Diamants" indice={j.ledger ? j.ledger.diamant.indice : j.indiceDiamant} />
+        <Jauge nom="Débris" indice={j.ledger ? j.ledger.debris.indice : j.indiceDebris} />
         <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold', v.classe)}>
           <v.icone size={14} /> {v.nom}
         </span>
@@ -263,12 +287,111 @@ function LigneJoueur({ j, i }: { j: Rapport; i: number }) {
                 {j.verdict === 'pas_assez' && (
                   <p className="text-xs">Pas encore assez de blocs minés pour juger : l'indice apparaîtra plus tard.</p>
                 )}
+                {j.ledger && <p className="text-xs">(Estimation par les stats, moins fiable que le journal ci-dessous.)</p>}
               </div>
             </div>
+            {j.ledger && <Journal l={j.ledger} />}
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Le journal Ledger : résumé + les derniers filons, avec le tunnel creusé avant
+// ------------------------------------------------------------------
+function Journal({ l }: { l: Ledger }) {
+  return (
+    <div className="border-t border-border p-4">
+      <p className="mb-3 font-pixel text-sm">Journal des blocs (Ledger)</p>
+      <div className="mb-4 grid gap-2 sm:grid-cols-2">
+        <Resume nom="Diamants" couleur="#6ff3fb" a={l.diamant} normal={120} />
+        <Resume nom="Débris antiques" couleur="#a0715a" a={l.debris} normal={80} />
+      </div>
+      {l.derniers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Aucun diamant ni débris trouvé pour l'instant.</p>
+      ) : (
+        <>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Derniers filons. Le dessin montre, vu de dessus, les blocs creusés dans les 5 minutes avant la découverte (du
+            plus ancien, pâle, au plus récent). Un trait droit qui fonce sur le minerai, filon après filon : X-ray probable.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {l.derniers.map((f, i) => (
+              <CarteFilon key={`${f.le}-${i}`} f={f} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function Resume({ nom, couleur, a, normal }: { nom: string; couleur: string; a: AnalyseMinerai; normal: number }) {
+  return (
+    <div className="rounded-2xl bg-muted/60 p-3 text-sm">
+      <p className="mb-1 flex items-center gap-2 font-semibold">
+        <span className="size-2.5" style={{ background: couleur, boxShadow: `0 0 8px ${couleur}` }} />
+        {nom} : {a.filons} filon{a.filons > 1 ? 's' : ''}
+      </p>
+      <p className="text-muted-foreground">
+        {a.decouverts} à découvert (grottes) · {a.creuses} en creusant
+      </p>
+      <p className="text-muted-foreground">
+        {a.blocsParFilon === null ? (
+          'Aucun filon trouvé en creusant.'
+        ) : (
+          <>
+            <b className="text-foreground">{nombre(a.blocsParFilon)}</b> blocs creusés par filon (normal : {normal} et plus)
+          </>
+        )}
+      </p>
+      {a.indice === null && a.creuses > 0 && <p className="text-xs text-muted-foreground">Indice à partir de 3 filons creusés.</p>}
+    </div>
+  )
+}
+
+function CarteFilon({ f }: { f: Filon }) {
+  const [copie, setCopie] = useState(false)
+  const tp = `/tp ${f.x} ${f.y + 1} ${f.z}`
+  const couleur = f.type === 'diamant' ? '#6ff3fb' : '#c08a6a'
+  const date = new Date(f.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return (
+    <div className="flex gap-3 rounded-2xl border border-border bg-background/40 p-2.5">
+      {/* Vue de dessus : 33 × 33 blocs centrés sur le filon */}
+      <svg viewBox="-16.5 -16.5 33 33" className="size-20 shrink-0 rounded-lg bg-[#1a1c22]" aria-label="Blocs creusés avant la découverte">
+        {f.chemin.map(([dx, dz, age], k) => (
+          <rect key={k} x={dx - 0.5} y={dz - 0.5} width={1} height={1} fill="#9aa0a6" opacity={0.15 + age * 0.75} />
+        ))}
+        <rect x={-0.9} y={-0.9} width={1.8} height={1.8} fill={couleur} />
+      </svg>
+      <div className="min-w-0 flex-1 text-xs">
+        <p className="font-semibold text-foreground">
+          {f.type === 'diamant' ? 'Diamants' : 'Débris'} ×{f.blocs}
+          <span
+            className={cn(
+              'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]',
+              f.decouvert ? 'bg-primary/15 text-primary' : 'bg-amber-300/15 text-amber-200',
+            )}
+          >
+            {f.decouvert ? 'à découvert' : `creusé (${f.creuseAvant} blocs)`}
+          </span>
+        </p>
+        <p className="mt-0.5 text-muted-foreground">{date}</p>
+        <button
+          onClick={() => {
+            void navigator.clipboard?.writeText(tp)
+            setCopie(true)
+            setTimeout(() => setCopie(false), 1500)
+          }}
+          className="mt-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+          title="Copier la commande pour s'y téléporter en jeu"
+        >
+          {copie ? 'Copié !' : tp}
+        </button>
+      </div>
+    </div>
   )
 }
 

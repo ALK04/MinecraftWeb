@@ -24,4 +24,7 @@ export const config = {
 
   // Mot de passe de l'espace admin (/admin). Vide = espace admin désactivé.
   adminMdp: env.ADMIN_MDP ?? '',
+
+  // Base du mod Ledger (journal des blocs cassés), pour le détecteur de X-ray. Vide = pas de Ledger.
+  ledgerDb: env.LEDGER_DB ?? '',
 }
