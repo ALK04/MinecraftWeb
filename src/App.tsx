@@ -1,29 +1,32 @@
 import { useEffect } from 'react'
 import { Route, Routes, useLocation, Link } from 'react-router'
 import { motion } from 'motion/react'
-import { Home, Map, Trophy, Target } from 'lucide-react'
+import { Home, Map, Trophy, Target, Skull } from 'lucide-react'
 import { NavBar, type NavItem } from '@/components/ui/tubelight-navbar'
-import { FondMonde, Minerais, Bedrock } from '@/components/Monde'
+import { FondMonde, Bedrock } from '@/components/Monde'
 import { Panneau } from '@/components/Panneau'
 import { Creeper } from '@/components/Creeper'
-import { FournisseurJeu } from '@/lib/jeu'
+import { FournisseurJeu, useJeu } from '@/lib/jeu'
 import { site } from '@/config'
 import Accueil from '@/pages/Accueil'
 import Carte from '@/pages/Carte'
 import Classements from '@/pages/Classements'
 import Objectifs from '@/pages/Objectifs'
+import Cimetiere from '@/pages/Cimetiere'
 
 const liens: NavItem[] = [
   { name: 'Accueil', url: '/', icon: Home },
   { name: 'Carte', url: '/carte-du-monde', icon: Map },
   { name: 'Classements', url: '/classements', icon: Trophy },
   { name: 'Objectifs', url: '/objectifs', icon: Target },
+  { name: 'Cimetière', url: '/cimetiere', icon: Skull },
 ]
 
 const titres: Record<string, string> = {
   '/carte-du-monde': 'Carte',
   '/classements': 'Classements',
   '/objectifs': 'Objectifs',
+  '/cimetiere': 'Cimetière',
 }
 
 export function App() {
@@ -40,7 +43,6 @@ export function App() {
       <FondMonde />
       <NavBar items={liens} />
       <div className="relative">
-        {!carte && <Minerais key={pathname} debut={pathname === '/' ? 48 : 14} />}
         <motion.div
           key={pathname}
           initial={{ opacity: 0, y: 14 }}
@@ -52,6 +54,7 @@ export function App() {
             <Route path="/carte-du-monde" element={<Carte />} />
             <Route path="/classements" element={<Classements />} />
             <Route path="/objectifs" element={<Objectifs />} />
+            <Route path="/cimetiere" element={<Cimetiere />} />
             <Route path="*" element={<Introuvable />} />
           </Routes>
         </motion.div>
@@ -64,11 +67,13 @@ export function App() {
 }
 
 function Introuvable() {
+  const { debloquer } = useJeu()
+  useEffect(() => debloquer('vide'), [])
   return (
     <main className="grid min-h-[70dvh] place-items-center px-4 text-center">
       <div>
         <p className="ombre-mc font-pixel text-7xl text-primary">404</p>
-        <p className="mt-3 text-muted-foreground">Ce chunk n'a pas encore été généré.</p>
+        <p className="mt-3 text-muted-foreground">Ce chunk n'a pas encore été généré. Tu es tombé dans le vide.</p>
         <Link to="/" className="mt-6 inline-block text-sm font-semibold text-primary hover:underline">
           Retour au spawn
         </Link>

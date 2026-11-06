@@ -6,6 +6,7 @@ import { statut } from './statut.ts'
 import { classements } from './classements.ts'
 import { lireJoueurs } from './joueurs.ts'
 import { routesObjectifs } from './objectifs.ts'
+import { routesSucces } from './succes.ts'
 
 const app = express()
 app.set('trust proxy', 1) // derrière Caddy : la vraie IP du visiteur est dans X-Forwarded-For
@@ -27,6 +28,7 @@ app.get('/api/joueurs', async (_req, res) => {
 })
 
 app.use('/api/objectifs', routesObjectifs())
+app.use('/api/succes', routesSucces())
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ erreur: 'Introuvable' })

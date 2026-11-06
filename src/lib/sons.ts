@@ -76,6 +76,17 @@ export const sons = {
     note(70, 0, 0.7, 'sawtooth', 0.18)
   },
   meche: () => bruit(1.5, 0.12, 3500, 'highpass', true),
+  aie: () => {
+    note(260, 0, 0.09, 'square', 0.07)
+    note(190, 0.06, 0.12, 'square', 0.06)
+  },
+  fanfare: () =>
+    [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => note(f, i * 0.11, 0.25, 'square', 0.05)),
+  angoisse: () => {
+    note(55, 0, 2.2, 'sawtooth', 0.12)
+    note(58, 0.1, 2.1, 'sawtooth', 0.1)
+  },
+  fleur: () => note(1500 + Math.random() * 500, 0, 0.1, 'sine', 0.05),
   ouf: () => {
     note(500, 0, 0.12, 'sine', 0.06)
     note(380, 0.1, 0.18, 'sine', 0.06)

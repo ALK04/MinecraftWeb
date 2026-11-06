@@ -129,7 +129,7 @@ const SPLASHS = [
 ]
 
 function Hero({ statut }: { statut: Statut | null }) {
-  const { eclats, debloquer } = useJeu()
+  const { eclats, orbes, debloquer, compter } = useJeu()
   const [nuit, setNuit] = useState(false)
   const [splash, setSplash] = useState(() => Math.floor(Math.random() * SPLASHS.length))
   const lus = useRef(new Set<number>())
@@ -155,14 +155,25 @@ function Hero({ statut }: { statut: Statut | null }) {
           setNuit((n) => !n)
           sons.pling()
           debloquer('nuit')
+          compter('jour-nuit', 10, 'insomnie')
         }}
       />
       <FondBlocs
         className="curseur-pioche absolute inset-0 -z-10 h-full w-full"
-        onCasser={(x, y, couleurs) => {
-          eclats(x, y, couleurs, 22, 6)
+        onCoup={(c) => {
           sons.casse()
+          if (!c.casse) {
+            eclats(c.x, c.y, c.couleurs, 6, 3)
+            return
+          }
+          eclats(c.x, c.y, c.couleurs, c.minerai ? 34 : 22, c.minerai ? 8 : 6)
           debloquer('bloc')
+          compter('blocs', 50, 'demolisseur')
+          if (c.minerai) {
+            orbes(c.x, c.y, c.minerai === 'diamant' ? 16 : 7)
+            debloquer('minerai')
+            if (c.minerai === 'diamant') debloquer('diamant')
+          }
         }}
       />
       <Collines />
@@ -237,7 +248,7 @@ function Hero({ statut }: { statut: Statut | null }) {
           transition={{ delay: 1.1 }}
           className="mt-4 font-pixel text-xs text-white/70"
         >
-          {site.version} · casse les blocs qui flottent, ils ne demandent que ça
+          {site.version} · casse les blocs qui flottent… et cherche les diamants
         </motion.p>
       </div>
     </section>

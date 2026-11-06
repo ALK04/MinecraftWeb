@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useScroll, useTransform } from 'motion/react'
 import { Trophy, Volume2, VolumeX } from 'lucide-react'
 import { SUCCES, useJeu, type IdSucces } from '@/lib/jeu'
-import { basculerSon, sonActif, sons } from '@/lib/sons'
-import { Modale } from '@/components/communs'
+import { basculerSon, sonActif } from '@/lib/sons'
+import { Bouton, Modale, Tete, champ } from '@/components/communs'
+import { useApi, type Joueur } from '@/lib/api'
 import { site } from '@/config'
 import { cn } from '@/lib/utils'
 
@@ -44,109 +45,71 @@ export function FondMonde() {
 }
 
 // ------------------------------------------------------------------
-// Des filons de minerai dans les marges : 3 coups de pioche pour les miner
-// ------------------------------------------------------------------
-const MINERAIS = [
-  { nom: 'fer', c: ['#e2b89c', '#b98b6c'], poids: 3 },
-  { nom: 'or', c: ['#fcee4b', '#d4a92a'], poids: 2 },
-  { nom: 'redstone', c: ['#ff3030', '#b31010'], poids: 3 },
-  { nom: 'lapis', c: ['#4a6ff0', '#1e3a9e'], poids: 2 },
-  { nom: 'émeraude', c: ['#2bf074', '#0b9c40'], poids: 1 },
-  { nom: 'diamant', c: ['#6ff3fb', '#2bb5c0'], poids: 1 },
-]
-const SAC = MINERAIS.flatMap((m) => Array(m.poids).fill(m) as (typeof MINERAIS)[number][])
-
-type Filon = { id: number; haut: number; cote: 'left' | 'right'; decalage: number; type: (typeof MINERAIS)[number]; pixels: number[] }
-
-function creerFilons(debut: number): Filon[] {
-  return Array.from({ length: 16 }, (_, id) => ({
-    id,
-    haut: debut + ((100 - debut - 4) * (id + Math.random() * 0.8)) / 16,
-    cote: id % 2 ? 'left' : 'right',
-    decalage: 8 + Math.random() * 30,
-    type: SAC[Math.floor(Math.random() * SAC.length)],
-    pixels: Array.from({ length: 16 }, (_, i) => i).filter(() => Math.random() < 0.45),
-  }))
-}
-
-export function Minerais({ debut }: { debut: number }) {
-  const [filons] = useState(() => creerFilons(debut))
-  const [mines, setMines] = useState<number[]>([])
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden overflow-hidden xl:block">
-      {filons
-        .filter((f) => !mines.includes(f.id))
-        .map((f) => (
-          <BlocMinerai key={f.id} f={f} mine={() => setMines((m) => [...m, f.id])} />
-        ))}
-    </div>
-  )
-}
-
-function BlocMinerai({ f, mine }: { f: Filon; mine: () => void }) {
-  const { eclats, orbes, debloquer } = useJeu()
-  const [coups, setCoups] = useState(0)
-  const [choc, setChoc] = useState(0)
-
-  const piocher = (e: MouseEvent) => {
-    const n = coups + 1
-    setCoups(n)
-    setChoc((c) => c + 1)
-    sons.casse()
-    eclats(e.clientX, e.clientY, [...f.type.c, '#6b7075'], n < 3 ? 6 : 28, n < 3 ? 3 : 7)
-    if (n >= 3) {
-      orbes(e.clientX, e.clientY, f.type.nom === 'diamant' ? 14 : 6)
-      debloquer('minerai')
-      if (f.type.nom === 'diamant') debloquer('diamant')
-      mine()
-    }
-  }
-
-  return (
-    <motion.button
-      tabIndex={-1}
-      onClick={piocher}
-      title={`Minerai de ${f.type.nom}`}
-      className="curseur-pioche pointer-events-auto absolute grid size-8 grid-cols-4"
-      style={{ top: `${f.haut}%`, [f.cote]: f.decalage }}
-      animate={{ x: choc === 0 ? 0 : choc % 2 ? [0, -3, 3, 0] : [0, 3, -3, 0], opacity: 1 - coups * 0.2 }}
-      whileHover={{ scale: 1.2 }}
-      transition={{ duration: 0.18 }}
-    >
-      {Array.from({ length: 16 }, (_, i) => {
-        const allume = f.pixels.includes(i)
-        return (
-          <span
-            key={i}
-            className={cn(allume && i === f.pixels[0] && 'animate-pulse')}
-            style={{
-              background: allume ? f.type.c[i % 2] : 'transparent',
-              boxShadow: allume && i === f.pixels[0] ? `0 0 10px ${f.type.c[0]}` : undefined,
-            }}
-          />
-        )
-      })}
-    </motion.button>
-  )
-}
-
-// ------------------------------------------------------------------
 // Le pied de page : la bedrock, le compteur de succès et le son
 // ------------------------------------------------------------------
+// Pour apparaître au classement des succès, il faut dire qui on est
+function ChoixPseudo() {
+  const { pseudo, setPseudo } = useJeu()
+  const { data: joueurs } = useApi<Joueur[]>('/api/joueurs')
+  const [edition, setEdition] = useState(!pseudo)
+  const [p, setP] = useState(pseudo)
+  const connu = joueurs?.some((j) => j.nom.toLowerCase() === p.toLowerCase())
+
+  if (!edition && pseudo) {
+    return (
+      <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm">
+        <Tete uuid={joueurs?.find((j) => j.nom.toLowerCase() === pseudo.toLowerCase())?.uuid ?? pseudo} nom={pseudo} taille={28} />
+        <span className="flex-1">
+          Tes succès comptent pour <b className="text-primary">{pseudo}</b> au classement.
+        </span>
+        <button onClick={() => setEdition(true)} className="text-xs text-muted-foreground underline hover:text-foreground">
+          changer
+        </button>
+      </div>
+    )
+  }
+  return (
+    <form
+      className="mb-4 rounded-xl border border-border p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!connu) return
+        setPseudo(joueurs!.find((j) => j.nom.toLowerCase() === p.toLowerCase())!.nom)
+        setEdition(false)
+      }}
+    >
+      <p className="mb-2 text-sm text-muted-foreground">
+        Ton pseudo Minecraft, pour que tes succès apparaissent dans les classements :
+      </p>
+      <div className="flex gap-2">
+        <input value={p} onChange={(e) => setP(e.target.value.trim())} placeholder="Steve" maxLength={16} className={champ} />
+        <Bouton type="submit" disabled={!connu}>
+          OK
+        </Bouton>
+      </div>
+      {p && joueurs && !connu && (
+        <p className="mt-2 text-xs text-muted-foreground">Ce pseudo n'est jamais venu sur le serveur.</p>
+      )}
+    </form>
+  )
+}
+
 export function Bedrock() {
   const { debloques, debloquer } = useJeu()
   const ref = useRef<HTMLDivElement>(null)
   const [liste, setListe] = useState(false)
   const [son, setSon] = useState(sonActif)
   const tex = useMemo(() => texture([15, 95]), [])
+  const debloquerRef = useRef(debloquer)
+  debloquerRef.current = debloquer
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const obs = new IntersectionObserver(([e]) => e.isIntersecting && debloquer('fond'), { threshold: 0.9 })
+    const obs = new IntersectionObserver(([e]) => e.isIntersecting && debloquerRef.current('fond'), { threshold: 0.9 })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [debloquer])
+  }, [])
 
   const total = Object.keys(SUCCES).length
 
@@ -177,6 +140,7 @@ export function Bedrock() {
       <div className="h-20 bg-[#0d0d0d] sm:hidden" />
 
       <Modale ouverte={liste} fermer={() => setListe(false)} titre={`Succès · ${debloques.length}/${total}`}>
+        <ChoixPseudo />
         <ul className="grid max-h-[60vh] gap-2 overflow-y-auto pr-1">
           {(Object.keys(SUCCES) as IdSucces[]).map((id) => {
             const s = SUCCES[id]
@@ -201,7 +165,9 @@ export function Bedrock() {
                   <p className={cn('font-pixel text-sm', ok ? 'text-[#ffff55]' : 'text-muted-foreground')}>
                     {ok ? s.titre : '???'}
                   </p>
-                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ok || !('secret' in s) ? s.desc : 'Succès secret… cherche bien.'}
+                  </p>
                 </div>
               </li>
             )

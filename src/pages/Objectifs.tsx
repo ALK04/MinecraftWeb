@@ -31,15 +31,9 @@ type Action = 'prendre' | 'lacher' | 'terminer' | 'rouvrir'
 export default function Objectifs() {
   const { data, erreur, recharger } = useApi<ReponseObjectifs>('/api/objectifs', 20_000)
   const { data: joueurs } = useApi<Joueur[]>('/api/joueurs')
-  const { eclats, orbes, debloquer } = useJeu()
-
-  // Pseudo et code, gardés dans le navigateur
-  const [pseudo, setPseudoEtat] = useState(() => lireStockage('pseudo'))
+  // Pseudo (partagé avec les succès) et code, gardés dans le navigateur
+  const { eclats, orbes, debloquer, pseudo, setPseudo } = useJeu()
   const codeRef = useRef(lireStockage('code-objectifs'))
-  const setPseudo = (p: string) => {
-    setPseudoEtat(p)
-    ecrireStockage('pseudo', p)
-  }
 
   const [fenetre, setFenetre] = useState<null | 'pseudo' | 'code' | 'nouveau'>(null)
   const enAttente = useRef<((p: string) => void) | null>(null)

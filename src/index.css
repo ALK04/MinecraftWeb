@@ -105,6 +105,15 @@ body {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%235e3f27' d='M9 6h2v2H9zM7 8h2v2H7zM5 10h2v2H5zM3 12h2v2H3zM1 14h2v2H1z'/%3E%3Cpath fill='%236ff3fb' d='M4 1h7v2H4zM11 2h2v2h-2zM13 4h2v6h-2zM10 4h3v2h-3z'/%3E%3Cpath fill='%232bb5c0' d='M4 2h2v1H4zM13 8h2v2h-2z'/%3E%3C/svg%3E") 6 2, pointer;
 }
 
+/* Konami code : tout passe en arc-en-ciel pendant 10 secondes */
+html.arc-en-ciel main,
+html.arc-en-ciel nav {
+  animation: arc-en-ciel 1.2s linear infinite;
+}
+@keyframes arc-en-ciel {
+  to { filter: hue-rotate(360deg) saturate(1.6); }
+}
+
 img.pixel {
   image-rendering: pixelated;
 }

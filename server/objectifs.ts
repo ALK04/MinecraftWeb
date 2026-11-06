@@ -1,15 +1,11 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
-import { DatabaseSync } from 'node:sqlite'
-import { mkdirSync } from 'node:fs'
-import path from 'node:path'
 import { timingSafeEqual } from 'node:crypto'
 import { config } from './config.ts'
+import { db } from './db.ts'
 
 // ------------------------------------------------------------------
 // Base de données (un simple fichier SQLite)
 // ------------------------------------------------------------------
-mkdirSync(path.dirname(config.dbPath), { recursive: true })
-const db = new DatabaseSync(config.dbPath)
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS objectifs (

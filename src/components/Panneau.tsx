@@ -33,6 +33,11 @@ const MESSAGES: Record<string, Lignes[]> = {
     ['Un objectif', 'pas fini,', "c'est un", 'projet long'],
     ['Prends-en', 'un.', 'Juste un.', 'Allez.'],
   ],
+  '/cimetiere': [
+    ['Silence,', 'on pleure.', '', '(appuie F)'],
+    ['Défense de', 'déterrer', 'les copains', ''],
+    ['Prochaine', 'tombe :', 'peut-être', 'toi.'],
+  ],
   '/carte-du-monde': [
     ['Vous êtes', 'ici', '↓', ''],
     ['Pas de', 'spoil des', 'bases des', 'autres !'],
@@ -98,6 +103,9 @@ export function Panneau() {
         onDragStart={() => {
           sons.bois()
           debloquer('panneau')
+        }}
+        onDragEnd={(_, info) => {
+          if (Math.hypot(info.velocity.x, info.velocity.y) > 3000) debloquer('lanceur')
         }}
         onTap={taper}
         whileHover={{ scale: 1.04 }}

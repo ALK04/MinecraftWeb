@@ -24,7 +24,7 @@ type Etat = 'cache' | 'regarde' | 'meche' | 'boum'
 
 export function Creeper() {
   const { pathname } = useLocation()
-  const { eclats, secouer, debloquer } = useJeu()
+  const { eclats, secouer, debloquer, compter } = useJeu()
   const [etat, setEtat] = useState<Etat>('cache')
   const ref = useRef<HTMLButtonElement>(null)
   const minuterie = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -54,8 +54,16 @@ export function Creeper() {
     if (minuterie.current) clearTimeout(minuterie.current)
     meche.current?.stop()
     sons.ouf()
+    debloquer('sangfroid')
     setEtat('regarde')
   }
+
+  // Taper « creeper » au clavier le fait venir tout de suite
+  useEffect(() => {
+    const venir = () => setEtat((e) => (e === 'cache' ? 'regarde' : e))
+    window.addEventListener('creeper-ici', venir)
+    return () => window.removeEventListener('creeper-ici', venir)
+  }, [])
 
   const exploser = () => {
     const r = ref.current?.getBoundingClientRect()
@@ -68,6 +76,7 @@ export function Creeper() {
     sons.boum()
     secouer(18)
     debloquer('creeper')
+    compter('explosions', 5, 'kamikaze')
     setEtat('boum')
     setTimeout(() => setEtat('cache'), 900)
   }
@@ -77,16 +86,16 @@ export function Creeper() {
   const visible = etat === 'regarde' || etat === 'meche'
 
   return (
-    <div className="pointer-events-none fixed bottom-0 left-3 z-30 overflow-hidden sm:left-8">
+    <div className="pointer-events-none fixed bottom-0 left-3 z-30 overflow-hidden pt-4 sm:left-8">
       <AnimatePresence>
         {visible && (
           <motion.button
             ref={ref}
             aria-label="Un creeper ! (ne le touche pas)"
             className="pointer-events-auto block"
-            initial={{ y: 110 }}
-            animate={{ y: 18, rotate: etat === 'meche' ? [0, -4, 4, -4, 0] : [0, -3, 0, 3, 0] }}
-            exit={{ y: 110 }}
+            initial={{ y: 140 }}
+            animate={{ y: 6, rotate: etat === 'meche' ? [0, -4, 4, -4, 0] : [0, -3, 0, 3, 0] }}
+            exit={{ y: 140 }}
             transition={{
               y: { type: 'spring', stiffness: 160, damping: 14 },
               rotate: { duration: etat === 'meche' ? 0.25 : 3, repeat: Infinity },
@@ -100,15 +109,15 @@ export function Creeper() {
               transition={{ duration: 1.5, ease: 'easeIn' }}
               className="relative"
             >
-              {/* Tête */}
-              <div className="grid size-16 grid-cols-8 shadow-[0_0_0_3px_rgba(0,0,0,0.25)] sm:size-20">
+              {/* Tête, bien large */}
+              <div className="grid h-[76px] w-24 grid-cols-8 grid-rows-8 shadow-[0_0_0_3px_rgba(0,0,0,0.25)] sm:h-[92px] sm:w-[120px]">
                 {VISAGE.join('').split('').map((p, i) => (
                   <div key={i} style={{ background: p === 'X' ? (i < 32 ? '#111' : '#1d2b1a') : PEAU[i] }} />
                 ))}
               </div>
-              {/* Corps */}
-              <div className="mx-auto grid h-10 w-10 grid-cols-4 sm:w-12">
-                {PEAU.slice(0, 16).map((c, i) => (
+              {/* Juste un bout de corps */}
+              <div className="mx-auto grid h-4 w-16 grid-cols-8 sm:w-20">
+                {PEAU.slice(8, 16).map((c, i) => (
                   <div key={i} style={{ background: c }} />
                 ))}
               </div>
