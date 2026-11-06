@@ -1,13 +1,14 @@
 import { Router } from 'express'
 import { db } from './db.ts'
 import { lireJoueurs } from './joueurs.ts'
+import { limiteur } from './limite.ts'
 
 // Les succès débloqués sur le site, par joueur (pour le classement).
 // ⚠️ Garder cette liste identique aux clés de SUCCES dans src/lib/jeu.tsx
 export const IDS_SUCCES = [
   'adresse', 'panneau', 'ecrivain', 'lanceur', 'bloc', 'demolisseur', 'minerai', 'diamant',
   'nuit', 'insomnie', 'splash', 'creeper', 'sangfroid', 'kamikaze', 'fond', 'objectif',
-  'tape', 'respect', 'fidele', 'nocturne', 'konami', 'herobrine', 'vide', 'completionniste',
+  'tape', 'respect', 'arcade', 'pro', 'paparazzi', 'fidele', 'nocturne', 'konami', 'herobrine', 'vide', 'completionniste',
 ]
 
 db.exec(`
@@ -23,14 +24,7 @@ const tout = db.prepare('SELECT pseudo, id, le FROM succes ORDER BY le')
 const inserer = db.prepare('INSERT OR IGNORE INTO succes (pseudo, id) VALUES (?, ?)')
 
 // Anti-spam : 30 envois max par 10 minutes et par adresse IP
-const envois = new Map<string, number[]>()
-function tropDEnvois(ip: string) {
-  const maintenant = Date.now()
-  const recents = (envois.get(ip) ?? []).filter((t) => maintenant - t < 10 * 60_000)
-  recents.push(maintenant)
-  envois.set(ip, recents)
-  return recents.length > 30
-}
+const tropDEnvois = limiteur(30, 10 * 60_000)
 
 export function routesSucces(): Router {
   const r = Router()
@@ -46,7 +40,7 @@ export function routesSucces(): Router {
   })
 
   r.post('/', async (req, res) => {
-    if (tropDEnvois(req.ip ?? '?')) return void res.status(429).json({ erreur: 'Doucement !' })
+    if (tropDEnvois(req.ip)) return void res.status(429).json({ erreur: 'Doucement !' })
 
     const pseudo = typeof req.body?.pseudo === 'string' ? req.body.pseudo.trim() : ''
     const ids: unknown = req.body?.ids

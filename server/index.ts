@@ -7,6 +7,8 @@ import { classements } from './classements.ts'
 import { lireJoueurs } from './joueurs.ts'
 import { routesObjectifs } from './objectifs.ts'
 import { routesSucces } from './succes.ts'
+import { routesScores } from './scores.ts'
+import { joueurDuJour, releverStats } from './joueurDuJour.ts'
 
 const app = express()
 app.set('trust proxy', 1) // derrière Caddy : la vraie IP du visiteur est dans X-Forwarded-For
@@ -29,6 +31,11 @@ app.get('/api/joueurs', async (_req, res) => {
 
 app.use('/api/objectifs', routesObjectifs())
 app.use('/api/succes', routesSucces())
+app.use('/api/scores', routesScores())
+
+app.get('/api/joueur-du-jour', async (_req, res) => {
+  res.json(await joueurDuJour())
+})
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ erreur: 'Introuvable' })
@@ -47,6 +54,11 @@ if (existsSync(dist)) {
     res.sendFile(path.join(dist, 'index.html'))
   })
 }
+
+// Relevé des stats toutes les 10 minutes (pour le « joueur du jour »)
+const relever = () => releverStats().catch((e) => console.error('Relevé des stats :', e))
+void relever()
+setInterval(relever, 10 * 60_000)
 
 app.listen(config.port, () => {
   console.log(`Site Minecraft prêt sur http://localhost:${config.port}`)

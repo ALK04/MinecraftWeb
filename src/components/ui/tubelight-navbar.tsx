@@ -27,7 +27,7 @@ export function NavBar({ items, className }: NavBarProps) {
         className,
       )}
     >
-      <nav className="flex items-center gap-1 rounded-full border border-border bg-background/60 p-1 shadow-lg shadow-black/40 backdrop-blur-xl sm:gap-2">
+      <nav className="flex items-center gap-0.5 rounded-full border border-border bg-background/60 p-1 shadow-lg shadow-black/40 backdrop-blur-xl xl:gap-1">
         {items.map((item) => {
           const Icon = item.icon
           const isActive = actif(item.url)
@@ -38,13 +38,13 @@ export function NavBar({ items, className }: NavBarProps) {
               to={item.url}
               aria-label={item.name}
               className={cn(
-                'relative cursor-pointer rounded-full px-5 py-2 text-sm font-semibold transition-colors sm:px-6',
+                'relative cursor-pointer rounded-full px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors sm:px-4 xl:px-5',
                 'text-foreground/70 hover:text-primary',
                 isActive && 'bg-muted text-primary',
               )}
             >
-              <span className="hidden md:inline">{item.name}</span>
-              <span className="md:hidden">
+              <span className="hidden lg:inline">{item.name}</span>
+              <span className="lg:hidden">
                 <Icon size={18} strokeWidth={2.5} />
               </span>
               {isActive && (

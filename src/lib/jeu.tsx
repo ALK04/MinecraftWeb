@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { AnimatePresence, motion } from 'motion/react'
 import {
   ArrowDownToLine, Bomb, Calendar, CheckCheck, Copy, Crown, Eye, Feather, Flame, Flower2, Gamepad2, Gem, Ghost, Hammer,
-  Hand, Moon, MoonStar, Move, Pickaxe, Quote, Rocket, ShieldCheck, Sparkles, Sunrise, type LucideIcon,
+  Hand, Moon, MoonStar, Move, Pickaxe, Quote, Rocket, ShieldCheck, Sparkles, Sunrise, Joystick, Zap, Camera,
+  type LucideIcon,
 } from 'lucide-react'
 import { api } from './api'
 import { sons } from './sons'
@@ -32,6 +33,9 @@ export const SUCCES = {
   objectif: { titre: 'Mission accomplie', desc: 'Terminer un objectif', icone: CheckCheck },
   tape: { titre: 'Bagarreur', desc: 'Taper 10 têtes dans les classements', icone: Hand },
   respect: { titre: 'Press F', desc: 'Rendre hommage au cimetière', icone: Flower2 },
+  arcade: { titre: "Joueur d'arcade", desc: 'Finir une partie de Chasse aux orbes', icone: Joystick },
+  pro: { titre: 'Main de diamant', desc: 'Faire 1 000 points à la Chasse aux orbes', icone: Zap },
+  paparazzi: { titre: 'Paparazzi', desc: 'Aller voir la star du jour', icone: Camera },
   fidele: { titre: 'Habitué', desc: 'Revenir sur le site 3 jours différents', icone: Calendar },
   nocturne: { titre: 'Créature de la nuit', desc: 'Visiter le site entre 1 h et 5 h du matin', icone: MoonStar, secret: true },
   konami: { titre: 'Tricheur !', desc: '↑ ↑ ↓ ↓ ← → ← → B A', icone: Gamepad2, secret: true },

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Route, Routes, useLocation, Link } from 'react-router'
 import { motion } from 'motion/react'
-import { Home, Map, Trophy, Target, Skull } from 'lucide-react'
+import { Home, Map, Trophy, Target, Skull, Gamepad2, Star } from 'lucide-react'
 import { NavBar, type NavItem } from '@/components/ui/tubelight-navbar'
 import { FondMonde, Bedrock } from '@/components/Monde'
 import { Panneau } from '@/components/Panneau'
@@ -13,12 +13,16 @@ import Carte from '@/pages/Carte'
 import Classements from '@/pages/Classements'
 import Objectifs from '@/pages/Objectifs'
 import Cimetiere from '@/pages/Cimetiere'
+import MiniJeu from '@/pages/MiniJeu'
+import StarDuJour from '@/pages/StarDuJour'
 
 const liens: NavItem[] = [
   { name: 'Accueil', url: '/', icon: Home },
   { name: 'Carte', url: '/carte-du-monde', icon: Map },
   { name: 'Classements', url: '/classements', icon: Trophy },
   { name: 'Objectifs', url: '/objectifs', icon: Target },
+  { name: 'Star du jour', url: '/star-du-jour', icon: Star },
+  { name: 'Mini-jeu', url: '/mini-jeu', icon: Gamepad2 },
   { name: 'Cimetière', url: '/cimetiere', icon: Skull },
 ]
 
@@ -27,6 +31,8 @@ const titres: Record<string, string> = {
   '/classements': 'Classements',
   '/objectifs': 'Objectifs',
   '/cimetiere': 'Cimetière',
+  '/mini-jeu': 'Mini-jeu',
+  '/star-du-jour': 'Star du jour',
 }
 
 export function App() {
@@ -55,6 +61,8 @@ export function App() {
             <Route path="/classements" element={<Classements />} />
             <Route path="/objectifs" element={<Objectifs />} />
             <Route path="/cimetiere" element={<Cimetiere />} />
+            <Route path="/mini-jeu" element={<MiniJeu />} />
+            <Route path="/star-du-jour" element={<StarDuJour />} />
             <Route path="*" element={<Introuvable />} />
           </Routes>
         </motion.div>
